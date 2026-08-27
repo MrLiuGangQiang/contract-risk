@@ -16,6 +16,7 @@ IDENTITY_PROVIDER_DINGTALK = "dingtalk"
 
 # ==================== 内置角色编码 ====================
 ROLE_SUPER_ADMIN = "super_admin"
+ROLE_ADMIN = "admin"
 ROLE_USER = "user"
 
 # ==================== 权限点编码（模块:动作）====================

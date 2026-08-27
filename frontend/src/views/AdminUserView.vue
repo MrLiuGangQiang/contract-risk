@@ -4,7 +4,7 @@
       <div class="toolbar">
         <div class="toolbar-left">
           <h3>用户与角色</h3>
-          <span class="toolbar-desc">管理系统用户及角色分配，仅超级管理员可访问</span>
+          <span class="toolbar-desc">管理系统用户及角色分配，仅管理员及以上可访问</span>
         </div>
         <div class="toolbar-right">
           <el-input
@@ -37,7 +37,7 @@
             <el-tag
               v-for="r in row.roles"
               :key="r.code"
-              :type="r.code === 'super_admin' ? 'danger' : 'primary'"
+              :type="r.code === 'super_admin' ? 'danger' : r.code === 'admin' ? 'warning' : 'primary'"
               size="small"
               class="role-tag"
             >

@@ -21,6 +21,7 @@ from app.domain.constants import (
     PERM_CONFIG_DINGTALK_TEST,
     PERM_CONFIG_DINGTALK_WRITE,
     PERM_ADMIN_USER_MANAGE,
+    ROLE_ADMIN,
     ROLE_SUPER_ADMIN,
     ROLE_USER,
     USER_STATUS_ACTIVE,
@@ -43,6 +44,8 @@ SEED_PERMISSIONS = [
 # 角色 → 权限编码
 SEED_ROLE_PERMISSIONS = {
     ROLE_SUPER_ADMIN: [code for code, _, _ in SEED_PERMISSIONS],
+    # 管理员：仅用户与角色管理，不含超管配置（钉钉配置仍仅超管）
+    ROLE_ADMIN: [PERM_AUTH_LOGIN, PERM_AUTH_ME, PERM_ADMIN_USER_MANAGE],
     ROLE_USER: [PERM_AUTH_LOGIN, PERM_AUTH_ME],
 }
 
@@ -169,6 +172,7 @@ async def bootstrap(session: AsyncSession) -> None:
     """执行全部启动引导（应用启动时调用，幂等）。"""
     roles = {
         ROLE_SUPER_ADMIN: await _ensure_role(session, ROLE_SUPER_ADMIN, "超管"),
+        ROLE_ADMIN: await _ensure_role(session, ROLE_ADMIN, "管理员"),
         ROLE_USER: await _ensure_role(session, ROLE_USER, "普通用户"),
     }
     perms = await _ensure_permissions(session)

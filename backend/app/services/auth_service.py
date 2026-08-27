@@ -331,10 +331,19 @@ class AuthService:
         if user is None:
             user = await self._create_dingtalk_user(union_id, nick, avatar, open_id, raw_profile)
         else:
-            # 每次登录同步昵称/头像（《04》第 7 节）
+            # 每次登录同步昵称/头像/手机号（《04》第 7 节）
             user.display_name = nick or user.display_name
             if avatar:
                 user.avatar_url = avatar
+            mobile = str(raw_profile.get("mobile", "") or "").strip()
+            if mobile:
+                user.phone = mobile
+                # 用户名迁移为手机号：仅当无其他用户占用时才更新，避免唯一键冲突
+                mobile_username = mobile[:64]
+                if user.username != mobile_username:
+                    exist = await self._user_repo.get_by_username(mobile_username)
+                    if exist is None:
+                        user.username = mobile_username
             identity = await self._user_repo.get_identity(user.id, IDENTITY_PROVIDER_DINGTALK)
             if identity is not None:
                 await self._user_repo.update_identity_profile(
@@ -379,14 +388,16 @@ class AuthService:
         open_id: str | None,
         profile: dict[str, Any],
     ) -> User:
-        """首次钉钉登录自动建号：默认 user 角色 + 身份绑定（单事务内完成）。"""
-        username = f"dt_{union_id}"[:64]
+        """首次钉钉登录自动建号：用户名取手机号（缺失回退 dt_unionid），默认普通用户角色。"""
+        mobile = str(profile.get("mobile", "") or "").strip()
+        username = (mobile or f"dt_{union_id}")[:64]
         display_name = nick or f"钉钉用户{union_id[:8]}"
         user = User(
             username=username,
             password_hash=None,
             display_name=display_name,
             avatar_url=avatar,
+            phone=mobile or None,
             status=USER_STATUS_ACTIVE,
             is_super_admin=False,
             must_change_password=False,
