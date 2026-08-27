@@ -40,12 +40,6 @@
       <div class="login-card" v-loading="loadingMethods">
         <!-- 钉钉扫码登录（默认内嵌官方二维码，不自动跳转） -->
         <template v-if="mode === 'dingtalk'">
-          <div class="card-head center">
-            <DingTalkIcon :size="48" class="dingtalk-icon" />
-            <h2>钉钉扫码登录</h2>
-            <p>使用企业钉钉账号扫码登录</p>
-          </div>
-
           <div class="qr-area" v-loading="dingtalkLoading">
             <template v-if="qrError">
               <p class="qr-error">{{ qrError }}</p>
@@ -123,7 +117,6 @@ import {
 } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import ContractIcon from '@/components/ContractIcon.vue'
-import DingTalkIcon from '@/components/DingTalkIcon.vue'
 import DingtalkQrLogin from '@/components/DingtalkQrLogin.vue'
 
 type LoginMode = 'dingtalk' | 'local'
@@ -360,21 +353,20 @@ async function onLogin() {
 /* ===== 右侧登录区 ===== */
 .form-panel {
   position: relative;
-  flex: 0.85;
+  flex: 0.8;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 36px;
+  padding: 24px;
 }
 .login-card {
   width: 100%;
-  max-width: 360px;
-  padding: 22px 30px 16px;
-  background: rgba(255, 255, 255, 0.82);
-  border-radius: 18px;
+  max-width: 332px;
+  padding: 16px;
+  background: #fff;
+  border-radius: 16px;
   box-shadow: 0 16px 48px rgba(15, 23, 42, 0.1);
-  backdrop-filter: blur(12px);
 }
 .card-head {
   margin-bottom: 14px;
@@ -393,9 +385,6 @@ async function onLogin() {
   margin: 0;
   font-size: 12px;
   color: #94a3b8;
-}
-.dingtalk-icon {
-  display: inline-block;
 }
 .admin-icon-wrap {
   width: 36px;
@@ -416,6 +405,8 @@ async function onLogin() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  background: #fff;
+  border-radius: 12px;
 }
 .qr-error {
   margin: 0 0 14px;
