@@ -38,6 +38,11 @@ RISK_RULE_CATEGORY_OTHER = "other"
 RISK_RULE_SEVERITY_HIGH = "high"
 RISK_RULE_SEVERITY_MEDIUM = "medium"
 RISK_RULE_SEVERITY_LOW = "low"
+# 规则维度分类
+RISK_RULE_CATEGORY_PROJECT = "project"
+RISK_RULE_CATEGORY_TECHNOLOGY = "technology"
+RISK_RULE_CATEGORY_CONTRACT = "contract"
+RISK_RULE_CATEGORY_GENERAL = "general"
 
 # ==================== 系统配置键 ====================
 CONFIG_KEY_DINGTALK = "dingtalk"

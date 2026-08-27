@@ -19,7 +19,7 @@
                 <el-input v-model="mineKeyword" placeholder="搜索编码 / 名称" clearable style="width: 200px">
                   <template #prefix><el-icon><search /></el-icon></template>
                 </el-input>
-                <el-select v-model="mineCategory" placeholder="分类" clearable style="width: 130px">
+                <el-select v-model="mineCategory" placeholder="维度" clearable style="width: 130px">
                   <el-option v-for="(label, value) in categoryMap" :key="value" :label="label" :value="value" />
                 </el-select>
                 <el-select v-model="mineSeverity" placeholder="级别" clearable style="width: 110px">
@@ -41,7 +41,7 @@
               </el-table-column>
               <el-table-column prop="code" label="编码" min-width="140" show-overflow-tooltip />
               <el-table-column prop="name" label="规则名称" min-width="150" show-overflow-tooltip />
-              <el-table-column label="分类" width="110">
+              <el-table-column label="维度" width="110">
                 <template #default="{ row }">{{ categoryMap[row.category] ?? row.category }}</template>
               </el-table-column>
               <el-table-column label="级别" width="90">
@@ -76,7 +76,7 @@
                 <el-input v-model="globalKeyword" placeholder="搜索编码 / 名称" clearable style="width: 200px" @keyup.enter="loadGlobal" @clear="loadGlobal">
                   <template #prefix><el-icon><search /></el-icon></template>
                 </el-input>
-                <el-select v-model="globalCategory" placeholder="分类" clearable style="width: 130px" @change="loadGlobal">
+                <el-select v-model="globalCategory" placeholder="维度" clearable style="width: 130px" @change="loadGlobal">
                   <el-option v-for="(label, value) in categoryMap" :key="value" :label="label" :value="value" />
                 </el-select>
                 <el-select v-model="globalSeverity" placeholder="级别" clearable style="width: 110px" @change="loadGlobal">
@@ -93,7 +93,7 @@
             <el-table v-loading="globalLoading" :data="globalRules" stripe>
               <el-table-column prop="code" label="编码" min-width="140" show-overflow-tooltip />
               <el-table-column prop="name" label="规则名称" min-width="150" show-overflow-tooltip />
-              <el-table-column label="分类" width="110">
+              <el-table-column label="维度" width="110">
                 <template #default="{ row }">{{ categoryMap[row.category] ?? row.category }}</template>
               </el-table-column>
               <el-table-column label="级别" width="90">
@@ -146,7 +146,7 @@
           <el-form-item label="规则名称" prop="name">
             <el-input v-model="form.name" placeholder="如：付款条款异常" />
           </el-form-item>
-          <el-form-item label="分类" prop="category">
+          <el-form-item label="维度" prop="category">
             <el-select v-model="form.category" style="width: 100%">
               <el-option v-for="(label, value) in categoryMap" :key="value" :label="label" :value="value" />
             </el-select>
@@ -222,12 +222,10 @@ const canManageGlobal = computed(
 )
 
 const categoryMap: Record<string, string> = {
-  payment: '付款条款',
-  breach: '违约责任',
-  subject: '合同主体',
-  ip: '知识产权',
-  dispute: '争议解决',
-  other: '其他',
+  project: '项目管理风险',
+  technology: '技术风险',
+  contract: '合同条款风险',
+  general: '通用风险',
 }
 const severityMap: Record<string, string> = {
   high: '高',

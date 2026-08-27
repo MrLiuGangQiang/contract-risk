@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-RiskRuleCategory = Literal["payment", "breach", "subject", "ip", "dispute", "other"]
+RiskRuleCategory = Literal["project", "technology", "contract", "general", "payment", "breach", "subject", "ip", "dispute", "other"]
 RiskRuleSeverity = Literal["high", "medium", "low"]
 
 

@@ -27,7 +27,9 @@ from app.domain.constants import (
     ROLE_USER,
     USER_STATUS_ACTIVE,
 )
+from app.domain.default_risk_rules import DEFAULT_RISK_RULES
 from app.models.config import SysConfig
+from app.models.risk_rule import RiskRule
 from app.models.user import Permission, Role, RolePermission, User, UserRole
 
 logger = logging.getLogger(__name__)
@@ -170,6 +172,24 @@ async def _ensure_admin_user(session: AsyncSession) -> None:
     logger.info("initial super admin created: %s", settings.admin_username)
 
 
+async def _ensure_default_risk_rules(session: AsyncSession) -> None:
+    """Seed default risk rules when the global rule set is empty.
+
+    Idempotent: does nothing if any active global rule exists.
+    """
+    existing = (
+        await session.execute(
+            select(RiskRule.id).where(RiskRule.deleted_at.is_(None)).limit(1)
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        return
+    for item in DEFAULT_RISK_RULES:
+        session.add(RiskRule(**item))
+    await session.flush()
+    logger.info("default risk rules seeded: %s", len(DEFAULT_RISK_RULES))
+
+
 async def bootstrap(session: AsyncSession) -> None:
     """执行全部启动引导（应用启动时调用，幂等）。"""
     roles = {
@@ -181,5 +201,6 @@ async def bootstrap(session: AsyncSession) -> None:
     await _ensure_role_permissions(session, roles, perms)
     await _ensure_dingtalk_config(session)
     await _ensure_admin_user(session)
+    await _ensure_default_risk_rules(session)
     await session.commit()
     logger.info("bootstrap finished")
