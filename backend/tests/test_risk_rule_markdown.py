@@ -3,7 +3,7 @@
 Pure function tests only; no shared database access.
 """
 from app.models.risk_rule import RiskRule
-from app.services.risk_rule_service import build_rule_markdown, parse_rule_markdown
+from app.services.risk_rule_service import build_rule_markdown, parse_rule_markdown, parse_rule_markdown_detailed
 
 
 def test_parse_valid_markdown() -> None:
@@ -82,3 +82,18 @@ def test_build_and_parse_roundtrip() -> None:
     assert item["enabled"] is True
     assert item["sort_order"] == 2
     assert item["keywords"] == ["breach", "compensation"]
+
+
+
+def test_parse_detailed_reports_errors() -> None:
+    """Strict parser should return human-readable errors for invalid rules."""
+    md = """## Bad Rule
+- category: unknown
+- severity: high
+- description: risk
+- suggestion: advice
+"""
+    valid, errors = parse_rule_markdown_detailed(md)
+    assert valid == []
+    assert len(errors) == 1
+    assert "code" in errors[0]

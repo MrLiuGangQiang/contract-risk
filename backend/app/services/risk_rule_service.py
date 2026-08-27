@@ -13,11 +13,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import BizException
 from app.domain.constants import (
     RISK_RULE_CATEGORY_BREACH,
+    RISK_RULE_CATEGORY_CONTRACT,
     RISK_RULE_CATEGORY_DISPUTE,
+    RISK_RULE_CATEGORY_GENERAL,
     RISK_RULE_CATEGORY_IP,
     RISK_RULE_CATEGORY_OTHER,
     RISK_RULE_CATEGORY_PAYMENT,
+    RISK_RULE_CATEGORY_PROJECT,
     RISK_RULE_CATEGORY_SUBJECT,
+    RISK_RULE_CATEGORY_TECHNOLOGY,
     RISK_RULE_SEVERITY_HIGH,
     RISK_RULE_SEVERITY_LOW,
     RISK_RULE_SEVERITY_MEDIUM,
@@ -36,6 +40,10 @@ from app.schemas.risk_rule import (
 logger = logging.getLogger(__name__)
 
 RISK_RULE_CATEGORIES = {
+    RISK_RULE_CATEGORY_PROJECT,
+    RISK_RULE_CATEGORY_TECHNOLOGY,
+    RISK_RULE_CATEGORY_CONTRACT,
+    RISK_RULE_CATEGORY_GENERAL,
     RISK_RULE_CATEGORY_PAYMENT,
     RISK_RULE_CATEGORY_BREACH,
     RISK_RULE_CATEGORY_SUBJECT,
@@ -80,15 +88,10 @@ def _parse_keywords(value: str) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
-def parse_rule_markdown(content: str) -> list[dict[str, Any]]:
-    """解析结构化 Markdown 规则（《10》第 3 节）。
-
-    每个 `## 名称` 开始一条规则，后续 `- key: value` 为字段。
-    返回经校验的字段字典列表；非法条目由调用方跳过。
-    """
+def _extract_raw_rules(content: str) -> list[dict[str, Any]]:
+    """Extract raw rule headings and key-value fields from Markdown."""
     rules: list[dict[str, Any]] = []
     current: dict[str, Any] | None = None
-
     for raw in content.splitlines():
         line = raw.strip()
         if line.startswith("## "):
@@ -103,22 +106,43 @@ def parse_rule_markdown(content: str) -> list[dict[str, Any]]:
             current["_fields"][key.strip()] = value.strip()
     if current is not None:
         rules.append(current)
+    return rules
 
+
+def parse_rule_markdown_detailed(content: str) -> tuple[list[dict[str, Any]], list[str]]:
+    """Parse Markdown and return (valid_rules, errors).
+
+    Errors are in Chinese and identify the rule heading/index; used by strict import.
+    """
+    errors: list[str] = []
     valid: list[dict[str, Any]] = []
-    for raw_rule in rules:
+    for idx, raw_rule in enumerate(_extract_raw_rules(content), start=1):
         fields = raw_rule["_fields"]
-        code = fields.get("code", "")
         name = raw_rule.get("name", "")
+        code = fields.get("code", "")
         category = fields.get("category", "")
         severity = fields.get("severity", "")
         description = fields.get("description", "")
         suggestion = fields.get("suggestion", "")
-        if not code or not name or category not in RISK_RULE_CATEGORIES:
-            continue
+        label = f"第{idx}条「{name or '未命名'}」"
+
+        problems: list[str] = []
+        if not code:
+            problems.append("缺少 code")
+        if not name:
+            problems.append("缺少规则名称")
+        if category not in RISK_RULE_CATEGORIES:
+            problems.append("维度非法，仅支持 project/technology/contract/general")
         if severity not in RISK_RULE_SEVERITIES:
+            problems.append("级别非法，仅支持 high/medium/low")
+        if not description:
+            problems.append("缺少风险说明 description")
+        if not suggestion:
+            problems.append("缺少处置建议 suggestion")
+        if problems:
+            errors.append(f"{label}：{'；'.join(problems)}")
             continue
-        if not description or not suggestion:
-            continue
+
         try:
             sort_order = int(fields.get("sort_order", "0") or "0")
         except ValueError:
@@ -136,8 +160,12 @@ def parse_rule_markdown(content: str) -> list[dict[str, Any]]:
                 "sort_order": max(0, min(9999, sort_order)),
             }
         )
-    return valid
+    return valid, errors
 
+
+def parse_rule_markdown(content: str) -> list[dict[str, Any]]:
+    """Parse Markdown and return only valid rules (legacy convenience)."""
+    return parse_rule_markdown_detailed(content)[0]
 
 def build_rule_markdown(rules: list[RiskRule]) -> str:
     """导出结构化 Markdown（《10》第 3 节）。"""
@@ -310,13 +338,20 @@ class RiskRuleService:
     async def import_markdown(
         self, content: str, *, operator_id: int, request_meta: dict[str, Any]
     ) -> RiskRuleImportResult:
-        """导入 Markdown：按 code 幂等 upsert，非法条目跳过。"""
-        parsed = parse_rule_markdown(content)
+        """导入 Markdown：严格校验后按 code 幂等 upsert；存在错误时不写入。
+
+        保存即校验：格式/字段有误时返回具体错误（20002），不修改数据库。
+        """
+        valid, errors = parse_rule_markdown_detailed(content)
+        if errors:
+            detail = "；".join(errors[:10])
+            if len(errors) > 10:
+                detail += f"；……共 {len(errors)} 条错误"
+            raise BizException(20002, f"Markdown 校验失败：{detail}")
+
         created = 0
         updated = 0
-        skipped = len(parsed)
-        for item in parsed:
-            skipped -= 1
+        for item in valid:
             existing = await self._repo.get_by_code(item["code"])
             if existing is None:
                 rule = RiskRule(
@@ -341,15 +376,15 @@ class RiskRuleService:
                 updated += 1
         await self._audit(
             "risk_rule.import", "POST", "/api/v1/admin/risk-rules/import",
-            {"created": created, "updated": updated, "skipped": skipped},
+            {"created": created, "updated": updated, "skipped": 0},
             operator_id, request_meta,
         )
         await self._session.commit()
         logger.info(
             "risk rule imported",
-            extra={"operator_id": operator_id, "created": created, "updated": updated, "skipped": skipped},
+            extra={"operator_id": operator_id, "created": created, "updated": updated, "skipped": 0},
         )
-        return RiskRuleImportResult(created=created, updated=updated, skipped=skipped)
+        return RiskRuleImportResult(created=created, updated=updated, skipped=0)
 
     # ==================== 私有 ====================
 

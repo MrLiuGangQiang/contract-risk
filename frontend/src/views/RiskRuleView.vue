@@ -87,6 +87,7 @@
                 <el-button type="primary" :icon="Plus" @click="openCreateGlobal">新建规则</el-button>
                 <el-button :icon="Upload" @click="openImport">导入</el-button>
                 <el-button :icon="Download" :loading="exporting" @click="onExport">导出</el-button>
+                <el-button :icon="EditPen" @click="openMdEditor">编辑模板 MD</el-button>
               </div>
             </div>
 
@@ -191,6 +192,17 @@
           <el-button type="primary" :loading="importing" @click="submitImport">开始导入</el-button>
         </template>
       </el-dialog>
+
+      <!-- 直接编辑模板 Markdown -->
+      <el-dialog v-model="mdEditorVisible" title="编辑全局模板 Markdown" width="920px" top="4vh" destroy-on-close>
+        <div class="md-tip">直接编辑 Markdown，保存时后端校验格式并拆分为规则；校验失败不会保存。</div>
+        <el-input v-model="mdContent" type="textarea" :rows="26" class="md-editor" spellcheck="false" />
+        <div v-if="mdError" class="md-error">{{ mdError }}</div>
+        <template #footer>
+          <el-button @click="mdEditorVisible = false">取消</el-button>
+          <el-button type="primary" :loading="mdSaving" @click="saveMdEditor">保存并校验</el-button>
+        </template>
+      </el-dialog>
     </div>
   </AppLayout>
 </template>
@@ -198,7 +210,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
-import { Download, Plus, RefreshLeft, Search, Upload } from '@element-plus/icons-vue'
+import { Download, EditPen, Plus, RefreshLeft, Search, Upload } from '@element-plus/icons-vue'
 import {
   createRiskRule,
   deleteMyRiskRule,
@@ -293,6 +305,10 @@ const importContent = ref('')
 const importing = ref(false)
 const fileRef = ref<HTMLInputElement>()
 const exporting = ref(false)
+const mdEditorVisible = ref(false)
+const mdContent = ref('')
+const mdSaving = ref(false)
+const mdError = ref('')
 
 const formRules: FormRules = {
   code: [
@@ -475,6 +491,43 @@ async function onDeleteGlobal(row: RiskRule) {
   }
 }
 
+async function loadExportMarkdown(): Promise<string> {
+  const blob = await exportRiskRules()
+  return await blob.text()
+}
+
+async function openMdEditor() {
+  mdError.value = ''
+  mdEditorVisible.value = true
+  mdContent.value = '加载中...'
+  try {
+    mdContent.value = await loadExportMarkdown()
+  } catch (e) {
+    mdError.value = (e as Error).message
+    mdContent.value = ''
+  }
+}
+
+async function saveMdEditor() {
+  if (!mdContent.value.trim()) {
+    mdError.value = '内容为空，请先编辑 Markdown'
+    return
+  }
+  mdSaving.value = true
+  mdError.value = ''
+  try {
+    const result = await importRiskRules(mdContent.value)
+    ElMessage.success(`已保存：新增 ${result.created}，更新 ${result.updated}`)
+    mdEditorVisible.value = false
+    await loadGlobal()
+    await loadMine()
+  } catch (e) {
+    mdError.value = (e as Error).message
+  } finally {
+    mdSaving.value = false
+  }
+}
+
 function openImport() {
   importContent.value = ''
   importVisible.value = true
@@ -584,6 +637,25 @@ async function onExport() {
   margin-top: 10px;
   display: flex;
   align-items: center;
+}
+.md-tip {
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+.md-editor :deep(textarea) {
+  font-family: Consolas, Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.md-error {
+  margin-top: 8px;
+  color: #dc2626;
+  white-space: pre-wrap;
+  font-size: 12px;
+  max-height: 120px;
+  overflow: auto;
 }
 .muted {
   color: #9ca3af;
