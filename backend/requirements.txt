@@ -13,3 +13,8 @@ httpx
 pytest
 pytest-asyncio
 pytest-cov
+
+# 合同风险识别（《11》）
+pypdf
+python-docx
+python-multipart

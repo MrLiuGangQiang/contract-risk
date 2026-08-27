@@ -18,6 +18,9 @@ node_modules/
 dist/
 *.local
 
+# 运行期上传/数据目录
+backend/data/
+
 # 日志与临时文件
 *.log
 .DS_Store

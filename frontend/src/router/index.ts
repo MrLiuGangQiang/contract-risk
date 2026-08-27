@@ -27,6 +27,15 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, allowMustChange: true, title: '修改密码' },
   },
   {
+    path: '/contracts',
+    name: 'contracts',
+    component: () => import('@/views/ContractScanView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: '合同识别',
+    },
+  },
+  {
     path: '/',
     name: 'home',
     component: () => import('@/views/HomeView.vue'),

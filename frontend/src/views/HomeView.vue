@@ -60,10 +60,10 @@
       <el-card class="brand-card quick-card" shadow="hover">
         <div class="quick-head">
           <ContractIcon :size="20" color="#f59e0b" />
-          <span>合同上传（即将上线）</span>
+          <span>合同风险识别</span>
         </div>
-        <p class="quick-desc">上传合同文档，进行 OCR 解析与风险扫描分析。</p>
-        <el-button disabled>敬请期待</el-button>
+        <p class="quick-desc">上传 txt / PDF / Word 合同，自动识别项目管理、技术、合同条款与通用风险。</p>
+        <el-button type="primary" plain @click="router.push({ name: 'contracts' })">前往识别</el-button>
       </el-card>
 
       <el-card class="brand-card quick-card" shadow="hover">

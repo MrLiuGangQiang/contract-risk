@@ -16,6 +16,10 @@
           <el-icon><home-filled /></el-icon>
           <span>首页</span>
         </el-menu-item>
+        <el-menu-item index="/contracts">
+          <el-icon><document /></el-icon>
+          <span>合同识别</span>
+        </el-menu-item>
         <el-menu-item v-if="auth.isSuperAdmin" index="/admin/config/dingtalk">
           <el-icon><setting /></el-icon>
           <span>钉钉配置</span>
@@ -70,6 +74,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowDown,
   ArrowRight,
+  Document,
   HomeFilled,
   Setting,
   UserFilled,

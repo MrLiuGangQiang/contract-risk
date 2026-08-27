@@ -47,6 +47,12 @@ RISK_RULE_CATEGORY_GENERAL = "general"
 # ==================== 系统配置键 ====================
 CONFIG_KEY_DINGTALK = "dingtalk"
 
+# ==================== 合同风险识别 ====================
+CONTRACT_STATUS_DONE = 1
+CONTRACT_STATUS_FAILED = 2
+CONTRACT_MAX_SIZE = 20 * 1024 * 1024
+CONTRACT_ALLOWED_EXTENSIONS = {"txt", "pdf", "docx"}
+
 # ==================== Redis 键前缀（命名规范：业务域:对象:标识）====================
 REDIS_REFRESH_PREFIX = "auth:refresh:"
 REDIS_BLACKLIST_PREFIX = "auth:blacklist:"

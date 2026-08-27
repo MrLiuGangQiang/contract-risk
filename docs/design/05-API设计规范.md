@@ -108,6 +108,18 @@
 
 > 权限说明：用户与角色管理接口为敏感管理接口，对非超管统一返回 404（隐藏）；业务规则见《04-认证与授权设计》 4.4 节。
 
+### 2.7 合同风险识别（auth，登录用户）
+
+| 方法 | 路径 | 权限 | 说明 |
+| --- | --- | --- | --- |
+| POST | `/api/v1/contracts/upload` | 登录 | 上传合同（multipart file），同步扫描并返回结果 |
+| GET | `/api/v1/contracts` | 登录 | 合同分页列表（page/page_size/keyword/severity） |
+| GET | `/api/v1/contracts/{id}` | 登录 | 合同详情 + 风险列表 |
+| POST | `/api/v1/contracts/{id}/rescan` | 登录 | 重新扫描 |
+| DELETE | `/api/v1/contracts/{id}` | 登录 | 软删除合同 |
+
+> 用户只能访问自己的合同；非本人返回 404 隐藏；详细设计见《11-合同风险识别核心功能设计》。
+
 ## 3. 端点详细设计
 
 ### 3.1 POST /api/v1/auth/login

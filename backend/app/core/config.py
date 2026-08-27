@@ -23,7 +23,8 @@ class Settings(BaseSettings):
     app_host: str = "0.0.0.0"
     app_port: int = 8000
     debug: bool = True
-    cors_origins: str = "http://localhost:5173"  # 逗号分隔的前端域名白名单
+    cors_origins: str = "http://localhost:5173"
+    upload_dir: str = "data/contracts"  # 逗号分隔的前端域名白名单
 
     # ===== 初始超管（首次启动幂等创建；该初始密码仅用于首次登录，登录后强制改密）=====
     admin_username: str = "admin"
