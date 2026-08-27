@@ -53,7 +53,7 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
-    path: '/admin/risk-rules',
+    path: '/risk-rules',
     name: 'risk-rules',
     component: () => import('@/views/RiskRuleView.vue'),
     meta: {
