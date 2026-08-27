@@ -57,7 +57,8 @@
 
         <!-- 超管本地登录 -->
         <template v-else>
-          <div class="card-head">
+          <div class="card-head center">
+            <Lock class="admin-icon" />
             <h2>超管登录</h2>
             <p>使用管理员账号登录系统</p>
           </div>
@@ -66,7 +67,6 @@
             :model="form"
             :rules="rules"
             label-position="top"
-            size="large"
             @keyup.enter="onLogin"
           >
             <el-form-item label="用户名" prop="username">
@@ -81,7 +81,7 @@
                 show-password
               />
             </el-form-item>
-            <el-button type="primary" class="login-btn" size="large" :loading="loading" @click="onLogin">
+            <el-button type="primary" class="login-btn" :loading="loading" @click="onLogin">
               登 录
             </el-button>
           </el-form>
@@ -273,6 +273,7 @@ async function onLogin() {
   margin: 0 0 10px;
   font-size: 30px;
   font-weight: 700;
+  letter-spacing: 2px;
   color: #0f172a;
 }
 .brand-slogan {
@@ -312,36 +313,43 @@ async function onLogin() {
 }
 .login-card {
   width: 100%;
-  max-width: 420px;
-  padding: 40px 40px 20px;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
+  max-width: 370px;
+  padding: 28px 34px 18px;
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 18px;
+  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.1);
+  backdrop-filter: blur(10px);
 }
 .card-head {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 .card-head.center {
   text-align: center;
 }
 .card-head h2 {
-  margin: 12px 0 6px;
-  font-size: 22px;
+  margin: 10px 0 4px;
+  font-size: 20px;
   font-weight: 700;
   color: #0f172a;
+  letter-spacing: 1px;
 }
 .card-head p {
   margin: 0;
-  font-size: 13px;
+  font-size: 12.5px;
   color: #94a3b8;
 }
 .dingtalk-icon {
   display: inline-block;
 }
+.admin-icon {
+  width: 30px;
+  height: 30px;
+  color: #2563eb;
+}
 
 /* ===== 二维码区域（无边框） ===== */
 .qr-area {
-  min-height: 380px;
+  min-height: 400px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -356,7 +364,16 @@ async function onLogin() {
 }
 
 .login-card :deep(.el-form-item__label) {
-  color: #334155;
+  color: #475569;
+  font-weight: 500;
+}
+.login-card :deep(.el-input__wrapper) {
+  border-radius: 10px;
+  background: #f8fafc;
+  box-shadow: 0 0 0 1px #e2e8f0 inset;
+}
+.login-card :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px #2563eb inset;
 }
 .login-btn {
   width: 100%;
