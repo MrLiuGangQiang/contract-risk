@@ -421,21 +421,24 @@ async function onLogin() {
   margin-bottom: 14px;
 }
 .admin-head h2 {
-  font-size: 21px;
+  margin-top: 10px !important;
+  font-size: 20px;
   letter-spacing: 2px;
 }
+.admin-head p {
+  margin-top: 4px !important;
+  letter-spacing: 1px;
+}
 .admin-icon-wrap {
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: 12px;
   color: #fff;
   background: linear-gradient(135deg, #2563eb, #7c3aed);
-  box-shadow:
-    0 0 0 8px rgba(37, 99, 235, 0.08),
-    0 14px 28px rgba(37, 99, 235, 0.28);
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.24);
 }
 .form-divider {
   height: 1px;
