@@ -1,0 +1,83 @@
+# 构建并推送 Docker 镜像到阿里云 ACR（《09》第 8 节 / docs/ops/部署指南.md）
+# 触发：push main / tag v* / 手动（可指定 image_tag）
+# 密钥：GitHub Actions Secrets 配置 ACR_USERNAME、ACR_PASSWORD
+name: Build & Push ACR
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 镜像版本标签（如 v0.1.0）；留空则按触发来源自动生成
+        required: false
+        type: string
+
+env:
+  REGISTRY: registry.cn-hangzhou.aliyuncs.com
+  IMAGE_REPO: liugangqiang/contract-risk
+
+concurrency:
+  group: acr-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-push:
+    name: Build & push (${{ matrix.component }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [backend, frontend]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 标签规范：<component>-<version>；tag 发布额外打 latest，始终附带 sha-<7>
+      - name: Compute image tags
+        id: meta
+        env:
+          INPUT_IMAGE_TAG: ${{ inputs.image_tag }}
+          COMPONENT: ${{ matrix.component }}
+        run: |
+          set -euo pipefail
+          if [ -n "${INPUT_IMAGE_TAG}" ]; then
+            VERSION="${INPUT_IMAGE_TAG}"
+          elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION="latest"
+          fi
+          SHA_SHORT="${GITHUB_SHA::7}"
+          REG="${REGISTRY}/${IMAGE_REPO}"
+          TAGS="${REG}:${COMPONENT}-${VERSION}"
+          if [ "${VERSION}" != "latest" ]; then
+            TAGS="${TAGS},${REG}:${COMPONENT}-latest"
+          fi
+          TAGS="${TAGS},${REG}:${COMPONENT}-sha-${SHA_SHORT}"
+          echo "tags=${TAGS}" >> "${GITHUB_OUTPUT}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+
+      - name: Login to Aliyun ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push ${{ matrix.component }} image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.component }}
+          file: ./${{ matrix.component }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Summary
+        run: |
+          echo "已推送镜像：${{ steps.meta.outputs.tags }}"
