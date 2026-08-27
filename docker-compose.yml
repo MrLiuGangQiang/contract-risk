@@ -5,25 +5,22 @@ name: contract-risk
 # 应用与迁移服务共用环境变量（YAML 锚点，避免重复）
 x-app-env: &app-env
   APP_ENV: prod
-  APP_HOST: 0.0.0.0
-  APP_PORT: "8000"
   DEBUG: "false"
   ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
   ADMIN_PASSWORD: ${ADMIN_PASSWORD:?请设置初始超管密码}
   JWT_SECRET: ${JWT_SECRET:?请设置 JWT_SECRET}
   FERNET_KEY: ${FERNET_KEY:?请设置 FERNET_KEY}
-  POSTGRES_HOST: postgres
-  POSTGRES_PORT: "5432"
-  POSTGRES_DB: ${POSTGRES_DB:-contract_risk}
-  POSTGRES_USER: ${POSTGRES_USER:-app_user}
-  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请设置数据库密码}
-  REDIS_HOST: redis
-  REDIS_PORT: "6379"
-  REDIS_DB: ${REDIS_DB:-0}
-  REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-  DINGTALK_CLIENT_ID: ${DINGTALK_CLIENT_ID:-}
-  DINGTALK_CLIENT_SECRET: ${DINGTALK_CLIENT_SECRET:-}
-  DINGTALK_REDIRECT_URI: ${DINGTALK_REDIRECT_URI:-}
+  # 聚合连接串（《02》4.6）：compose 内请指向服务名 postgres / redis
+  DATABASE_URL: ${DATABASE_URL:?请设置 DATABASE_URL（如 postgresql+asyncpg://app_user:密码@postgres:5432/contract_risk）}
+  REDIS_URL: ${REDIS_URL:?请设置 REDIS_URL（如 redis://redis:6379/0）}
+  # 连接池参数
+  DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
+  DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-20}
+  DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:-30}
+  DB_POOL_RECYCLE: ${DB_POOL_RECYCLE:-1800}
+  DB_POOL_PRE_PING: ${DB_POOL_PRE_PING:-true}
+  DB_ECHO: ${DB_ECHO:-false}
+  REDIS_MAX_CONNECTIONS: ${REDIS_MAX_CONNECTIONS:-50}
 
 services:
   postgres:

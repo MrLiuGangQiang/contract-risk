@@ -27,7 +27,7 @@ target_metadata = Base.metadata
 
 def run_migrations_offline() -> None:
     """离线模式：只生成 SQL，不连接数据库。"""
-    url = get_settings().database_url
+    url = get_settings().get_database_url()
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -48,7 +48,7 @@ def do_run_migrations(connection: Connection) -> None:
 async def run_async_migrations() -> None:
     """在线模式：异步引擎执行迁移。"""
     connectable = async_engine_from_config(
-        {"sqlalchemy.url": get_settings().database_url},
+        {"sqlalchemy.url": get_settings().get_database_url()},
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )

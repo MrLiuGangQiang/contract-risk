@@ -25,11 +25,12 @@ def get_redis() -> aioredis.Redis:
     """返回 Redis 客户端单例（惰性初始化，连接池复用）。"""
     global _pool
     if _pool is None:
+        settings = get_settings()
         _pool = aioredis.from_url(
-            get_settings().redis_url,
+            settings.get_redis_url(),
             encoding="utf-8",
             decode_responses=True,
-            max_connections=20,
+            max_connections=settings.redis_max_connections,
         )
     return _pool
 
