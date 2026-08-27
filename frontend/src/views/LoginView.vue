@@ -69,16 +69,19 @@
 
         <!-- 超管本地登录 -->
         <template v-else>
-          <div class="card-head center">
+          <div class="card-head center admin-head">
             <span class="admin-icon-wrap"><Lock /></span>
             <h2>超管登录</h2>
             <p>使用管理员账号登录系统</p>
           </div>
+          <div class="form-divider"></div>
+
           <el-form
             ref="formRef"
             :model="form"
             :rules="rules"
             label-position="top"
+            size="large"
             @keyup.enter="onLogin"
           >
             <el-form-item label="用户名" prop="username">
@@ -93,7 +96,7 @@
                 show-password
               />
             </el-form-item>
-            <el-button type="primary" class="login-btn" :loading="loading" @click="onLogin">
+            <el-button type="primary" class="login-btn" size="large" :loading="loading" @click="onLogin">
               登 录
             </el-button>
           </el-form>
@@ -326,7 +329,7 @@ async function onLogin() {
 }
 .feature-card {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   padding: 14px 16px;
   border-radius: 14px;
@@ -386,14 +389,15 @@ async function onLogin() {
   justify-content: center;
   gap: 8px;
   margin-bottom: 10px;
+  line-height: 1;
 }
 .dingtalk-head h2 {
   margin: 0;
   font-size: 16px;
+  line-height: 1;
 }
 .dingtalk-icon {
-  display: inline-block;
-  vertical-align: middle;
+  display: block;
 }
 .card-head h2 {
   margin: 10px 0 4px;
@@ -407,16 +411,24 @@ async function onLogin() {
   font-size: 12px;
   color: #94a3b8;
 }
+.admin-head {
+  margin-bottom: 12px;
+}
 .admin-icon-wrap {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  border-radius: 12px;
   color: #fff;
   background: linear-gradient(135deg, #2563eb, #7c3aed);
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.28);
+}
+.form-divider {
+  height: 1px;
+  margin: 0 0 16px;
+  background: linear-gradient(90deg, transparent, #e2e8f0 18%, #e2e8f0 82%, transparent);
 }
 
 /* ===== 二维码区域 ===== */
@@ -446,6 +458,7 @@ async function onLogin() {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  line-height: 1;
   padding: 10px 22px;
   border: none;
   border-radius: 999px;
@@ -466,9 +479,22 @@ async function onLogin() {
 }
 
 /* ===== 表单与按钮 ===== */
+.login-card :deep(.el-form-item) {
+  margin-bottom: 16px;
+}
 .login-card :deep(.el-form-item__label) {
-  color: #475569;
+  padding-bottom: 4px;
+  font-size: 12.5px;
+  color: #64748b;
   font-weight: 500;
+}
+.login-card :deep(.el-input__wrapper) {
+  border-radius: 10px;
+  background: #f8fafc;
+  box-shadow: 0 0 0 1px #e2e8f0 inset;
+}
+.login-card :deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px #bfdbfe inset;
 }
 .login-card :deep(.el-input__wrapper) {
   border-radius: 10px;
