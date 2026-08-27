@@ -70,7 +70,7 @@
         <!-- 超管本地登录 -->
         <template v-else>
           <div class="card-head center admin-head">
-            <span class="admin-icon-wrap"><Lock /></span>
+            <Lock class="admin-icon" />
             <h2>管理员登录</h2>
             <p>账号仅限系统管理员使用</p>
           </div>
@@ -429,16 +429,12 @@ async function onLogin() {
   margin-top: 4px !important;
   letter-spacing: 1px;
 }
-.admin-icon-wrap {
-  width: 42px;
-  height: 42px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  color: #fff;
-  background: linear-gradient(135deg, #2563eb, #7c3aed);
-  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.24);
+.admin-icon {
+  width: 26px;
+  height: 26px;
+  display: block;
+  margin: 0 auto 8px;
+  color: #2563eb;
 }
 .form-divider {
   height: 1px;
