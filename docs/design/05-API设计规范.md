@@ -60,7 +60,6 @@
 | POST | `/api/v1/auth/refresh` | refresh cookie | 刷新令牌（轮换） |
 | GET | `/api/v1/auth/dingtalk/authorize-url` | 公开 | 获取钉钉扫码授权 URL；返回 `{authorize_url, state}` |
 | POST | `/api/v1/auth/dingtalk/callback` | 公开 | 钉钉授权回调；body：`{auth_code, state}` |
-| POST | `/api/v1/auth/dingtalk/microapp-login` | 公开 | 钉钉 H5 微应用免登（仅钉钉客户端内触发）；body：`{auth_code}` |
 | GET | `/api/v1/auth/login-methods` | 公开 | 登录方式探测：返回 `{dingtalk_enabled}` |
 | GET | `/api/v1/auth/me` | 登录 | 当前用户信息与权限 |
 
@@ -135,13 +134,12 @@
   "message": "ok",
   "data": {
     "authorize_url": "https://login.dingtalk.com/oauth2/auth?redirect_uri=...&response_type=code&client_id=...&scope=openid&state=...&prompt=consent",
-    "state": "a1b2c3...",
-    "corp_id": "ding9f****41"
+    "state": "a1b2c3..."
   }
 }
 ```
 
-> 钉钉未配置或未启用时返回 `10002`（钉钉登录未配置/未启用）。`corp_id` 供钉钉客户端内 H5 微应用免登的 `requestAuthCode` JSAPI 使用（非敏感）。
+> 钉钉未配置或未启用时返回 `10002`（钉钉登录未配置/未启用）。
 
 ### 3.3 POST /api/v1/auth/dingtalk/callback
 
@@ -155,19 +153,7 @@
 
 > 钉钉授权成功回跳参数为 `authCode`、`state`，失败回跳参数为 `error`、`state`；前端回调页统一转换为 `{auth_code, state}` 后调用本接口。
 
-### 3.4 POST /api/v1/auth/dingtalk/microapp-login
-
-请求：
-
-```json
-{ "auth_code": "bab02f63c1e030fbbxxxx" }
-```
-
-成功响应与 `/auth/login` 相同（返回 access_token + user）。失败返回 `30020`（免登码无效/过期/已被使用等）。
-
-> 仅用于钉钉客户端内 H5 微应用免登场景：前端经 `dd.runtime.permission.requestAuthCode` 获取免登码后调用本接口；免登码 5 分钟有效、一次性，服务端不落库。浏览器网页场景请使用 `/auth/dingtalk/callback`。
-
-### 3.5 GET /api/v1/admin/configs/dingtalk
+### 3.4 GET /api/v1/admin/configs/dingtalk
 
 成功响应：
 
@@ -186,7 +172,7 @@
 }
 ```
 
-### 3.6 PUT /api/v1/admin/configs/dingtalk
+### 3.5 PUT /api/v1/admin/configs/dingtalk
 
 请求：
 
@@ -202,7 +188,7 @@
 
 成功响应：返回脱敏后的最新配置。写操作记录审计日志（`sys_operation_log`）。
 
-### 3.7 POST /api/v1/admin/configs/dingtalk/test
+### 3.6 POST /api/v1/admin/configs/dingtalk/test
 
 成功响应：
 

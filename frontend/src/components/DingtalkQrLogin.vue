@@ -10,8 +10,7 @@ import { onMounted, onUnmounted, ref } from 'vue'
  *
  * 复用后端 /auth/dingtalk/authorize-url 返回的完整授权 URL，仅追加 iframe=true，
  * 由钉钉官方登录页在 iframe 内渲染二维码；监听 postMessage 协议获取 authCode。
- * 说明：钉钉 iframe 模式不会检测本机 PC 客户端（平台白名单限制），因此不会显示
- * 本机头像；需要头像确认时由登录页提供「前往钉钉官方页」入口。
+ * 说明：钉钉 iframe 模式不会检测本机 PC 客户端（平台白名单限制），因此不会显示本机头像。
  */
 interface DingtalkLoginResult {
   redirectUrl: string

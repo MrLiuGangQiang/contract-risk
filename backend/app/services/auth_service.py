@@ -24,7 +24,6 @@ from app.domain.constants import (
     LOGIN_FAIL_LIMIT,
     LOGIN_FAIL_LOCK_MINUTES,
     LOGIN_METHOD_DINGTALK,
-    LOGIN_METHOD_DINGTALK_MICROAPP,
     LOGIN_METHOD_LOCAL,
     LOGIN_RATE_LIMIT_PER_MINUTE,
     ROLE_USER,
@@ -247,15 +246,11 @@ class AuthService:
     # ==================== 钉钉登录 ====================
 
     async def dingtalk_authorize_url(self) -> dict[str, str]:
-        """生成钉钉扫码授权 URL（state 存 Redis，防 CSRF），并返回 corp_id（微应用免登 JSAPI 需要）。"""
+        """生成钉钉扫码授权 URL（state 存 Redis，防 CSRF）。"""
         client = await self._config_service.build_dingtalk_client()
         state = uuid.uuid4().hex
         await redis_client.save_dingtalk_state(state, DINGTALK_STATE_TTL_SECONDS)
-        return {
-            "authorize_url": client.build_authorize_url(state),
-            "state": state,
-            "corp_id": client.corp_id,
-        }
+        return {"authorize_url": client.build_authorize_url(state), "state": state}
 
     async def dingtalk_callback(
         self,
@@ -313,70 +308,6 @@ class AuthService:
             trace_id=trace_id,
         )
 
-    async def dingtalk_microapp_login(
-        self,
-        *,
-        auth_code: str,
-        ip: str | None,
-        user_agent: str | None,
-        trace_id: str | None,
-    ) -> AuthResult:
-        """钉钉 H5 微应用免登（钉钉客户端内）：免登码换身份 → 同步资料 → 统一身份登录。
-
-        免登码为一次性临时凭证（5 分钟有效），只在服务端与钉钉交互，不存 Redis state、
-        不落库；失败由前端回退到扫码登录。与网页 OAuth 共用自动建号/签发逻辑。
-        """
-        client = await self._config_service.build_dingtalk_client()
-        try:
-            identity = await client.get_userid_by_auth_code(auth_code)
-        except BizException as exc:
-            await self._login_log_repo.add_log(
-                user_id=None,
-                login_method=LOGIN_METHOD_DINGTALK_MICROAPP,
-                success=False,
-                fail_reason=exc.message,
-                ip=ip,
-                user_agent=user_agent,
-                trace_id=trace_id,
-            )
-            await self._session.commit()
-            raise
-
-        union_id = str(identity.get("unionid", ""))
-        if not union_id:
-            await self._login_log_repo.add_log(
-                user_id=None,
-                login_method=LOGIN_METHOD_DINGTALK_MICROAPP,
-                success=False,
-                fail_reason="钉钉未返回 unionid",
-                ip=ip,
-                user_agent=user_agent,
-                trace_id=trace_id,
-            )
-            await self._session.commit()
-            raise BizException(30020, "钉钉免登失败")
-
-        # 头像同步为尽力而为：免登接口不返回头像，需额外权限 qyapi_get_member；
-        # 未开通权限时保持原头像，不影响登录（《04》第 7 节）。
-        avatar: str | None = None
-        user_id = identity.get("userid")
-        if user_id:
-            detail = await client.get_user_detail(str(user_id))
-            if detail:
-                avatar = detail.get("avatar")
-
-        return await self._login_by_dingtalk_identity(
-            union_id=union_id,
-            nick=str(identity.get("name", "")) or "",
-            avatar=avatar,
-            open_id=None,
-            raw_profile=identity,
-            login_method=LOGIN_METHOD_DINGTALK_MICROAPP,
-            ip=ip,
-            user_agent=user_agent,
-            trace_id=trace_id,
-        )
-
     async def _login_by_dingtalk_identity(
         self,
         *,
@@ -393,7 +324,7 @@ class AuthService:
         """钉钉身份统一登录（网页 OAuth 与微应用免登共用）。
 
         按 unionId 查找/创建用户 → 同步资料 → 状态校验 → 更新登录信息 → 写日志 → 签发令牌。
-        login_method 用于审计区分（dingtalk / dingtalk_microapp）。
+        login_method 用于审计区分（当前为 dingtalk）。
         """
         # 1) 按 unionId 查找/创建用户
         user = await self._user_repo.get_by_union_id(IDENTITY_PROVIDER_DINGTALK, union_id)

@@ -43,14 +43,10 @@ class ChangePasswordRequest(BaseModel):
 
 
 class DingtalkAuthorizeResponse(BaseModel):
-    """钉钉扫码授权引导信息（授权 URL + state + corp_id）。
-
-    corp_id 供钉钉客户端内 H5 微应用免登的 requestAuthCode JSAPI 使用（非敏感）。
-    """
+    """钉钉扫码授权 URL 响应。"""
 
     authorize_url: str
     state: str
-    corp_id: str
 
 
 class DingtalkCallbackRequest(BaseModel):
@@ -60,13 +56,6 @@ class DingtalkCallbackRequest(BaseModel):
     state: str = Field(min_length=1, max_length=128)
 
 
-class DingtalkMicroappLoginRequest(BaseModel):
-    """钉钉 H5 微应用免登请求（前端携带 JSAPI requestAuthCode 免登码）。
-
-    免登码 5 分钟有效、一次性，服务端不落库。
-    """
-
-    auth_code: str = Field(min_length=1, max_length=128)
 
 
 class UserOut(BaseModel):

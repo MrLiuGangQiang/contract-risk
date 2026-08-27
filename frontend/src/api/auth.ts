@@ -75,19 +75,6 @@ export async function dingtalkCallback(
   }
 }
 
-/**
- * 钉钉 H5 微应用免登（仅钉钉客户端内）：
- * 免登码来自 dd.runtime.permission.requestAuthCode，5 分钟有效、一次性。
- */
-export async function dingtalkMicroappLogin(auth_code: string): Promise<TokenData> {
-  try {
-    const resp = await client.post('/auth/dingtalk/microapp-login', { auth_code })
-    if (resp.data.code !== 0) throw new Error(resp.data.message)
-    return resp.data.data
-  } catch (e) {
-    throw new Error(errorMessage(e))
-  }
-}
 
 export async function getMe(): Promise<UserInfo> {
   try {

@@ -40,8 +40,6 @@ export interface DingTalkConfig {
 export interface DingTalkAuthorizeUrl {
   authorize_url: string
   state: string
-  /** 企业组织 ID：钉钉客户端内 H5 微应用免登的 requestAuthCode JSAPI 需要 */
-  corp_id: string
 }
 
 export interface DingTalkTestResult {

@@ -15,12 +15,10 @@ from app.domain.constants import (
     DINGTALK_APP_TOKEN_GRANT_TYPE,
     DINGTALK_APP_TOKEN_URL_TEMPLATE,
     DINGTALK_AUTHORIZE_URL,
-    DINGTALK_MICROAPP_USER_INFO_URL,
     DINGTALK_PROMPT,
     DINGTALK_RESPONSE_TYPE,
     DINGTALK_SCOPE,
     DINGTALK_TOKEN_URL,
-    DINGTALK_USER_DETAIL_URL,
     DINGTALK_USER_INFO_URL,
 )
 
@@ -159,68 +157,3 @@ class DingTalkClient:
             logger.warning("dingtalk app token response missing access_token: %s", data.get("code"))
             raise BizException(ERROR_DINGTALK, "钉钉接口未返回 access_token")
         return access_token
-
-    async def get_userid_by_auth_code(self, auth_code: str) -> dict[str, Any]:
-        """用微应用免登码换取用户身份（H5 微应用免登，钉钉客户端内）。
-
-        调用 POST /topapi/v2/user/getuserinfo（query: access_token，body: code），
-        返回 result：{userid, unionid, associated_unionid, name, sys, sys_level, device_id}。
-        免登码为一次性临时凭证（5 分钟有效），仅服务端使用，绝不落库/下发。
-        参考：https://help.dingtalk.io/zh/open/development/obtain-the-userid-of-a-user-by-using-the-log-free
-        """
-        access_token = await self.get_app_access_token()
-        url = f"{DINGTALK_MICROAPP_USER_INFO_URL}?access_token={access_token}"
-        status_code = 0
-        body: Any = None
-        try:
-            async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-                resp = await client.post(url, json={"code": auth_code})
-                status_code = resp.status_code
-                try:
-                    body = resp.json()
-                except ValueError:
-                    body = None
-                resp.raise_for_status()
-                data = body if isinstance(body, dict) else {}
-        except (httpx.HTTPError, ValueError) as exc:
-            detail = _safe_error_detail(status_code, body)
-            logger.warning("dingtalk microapp userinfo failed: HTTP %s %s", status_code, detail)
-            raise BizException(ERROR_DINGTALK, "钉钉免登失败") from exc
-
-        if data.get("errcode") != 0:
-            errcode = data.get("errcode")
-            logger.warning("dingtalk microapp userinfo errcode=%s", errcode)
-            if errcode == 40078:
-                raise BizException(ERROR_DINGTALK, "钉钉免登码无效或已过期，请重试")
-            raise BizException(ERROR_DINGTALK, "钉钉免登失败")
-        result = data.get("result")
-        if not isinstance(result, dict) or not result.get("unionid"):
-            logger.warning("dingtalk microapp userinfo missing unionid")
-            raise BizException(ERROR_DINGTALK, "钉钉免登失败")
-        return result
-
-    async def get_user_detail(self, user_id: str) -> dict[str, Any] | None:
-        """获取钉钉用户详情（头像同步用，尽力而为）。
-
-        免登接口不返回头像；本方法调用 topapi/v2/user/get 同步 avatar，
-        需要权限 qyapi_get_member（未开通时返回 60011）。任何失败仅告警并返回 None，
-        不阻断免登登录流程。
-        参考：https://help.dingtalk.io/zh/open/development/query-user-details
-        """
-        if not user_id:
-            return None
-        access_token = await self.get_app_access_token()
-        url = f"{DINGTALK_USER_DETAIL_URL}?access_token={access_token}"
-        try:
-            async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-                resp = await client.post(url, json={"userid": user_id, "language": "zh_CN"})
-                resp.raise_for_status()
-                data = resp.json()
-        except (httpx.HTTPError, ValueError) as exc:
-            logger.warning("dingtalk user detail failed: %s", exc)
-            return None
-        if data.get("errcode") != 0:
-            logger.warning("dingtalk user detail errcode=%s, skip avatar", data.get("errcode"))
-            return None
-        result = data.get("result")
-        return result if isinstance(result, dict) else None

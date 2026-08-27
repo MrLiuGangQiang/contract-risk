@@ -16,7 +16,6 @@ from app.schemas.auth import (
     ChangePasswordRequest,
     DingtalkAuthorizeResponse,
     DingtalkCallbackRequest,
-    DingtalkMicroappLoginRequest,
     LoginMethodsResponse,
     LoginRequest,
     TokenResponse,
@@ -162,24 +161,6 @@ async def dingtalk_callback(
     result = await AuthService(session).dingtalk_callback(
         auth_code=payload.auth_code,
         state=payload.state,
-        ip=request.client.host if request.client else None,
-        user_agent=request.headers.get("user-agent"),
-        trace_id=getattr(request.state, "request_id", None),
-    )
-    _set_refresh_cookie(response, result.refresh_token, result.refresh_ttl_seconds)
-    return ApiResponse.ok(request, data=result.token_response.model_dump(mode="json"))
-
-
-@router.post("/dingtalk/microapp-login")
-async def dingtalk_microapp_login(
-    payload: DingtalkMicroappLoginRequest,
-    request: Request,
-    response: Response,
-    session: AsyncSession = Depends(get_db),
-) -> dict[str, Any]:
-    """钉钉 H5 微应用免登（公开；仅钉钉客户端内触发）：免登码换用户身份并签发登录态。"""
-    result = await AuthService(session).dingtalk_microapp_login(
-        auth_code=payload.auth_code,
         ip=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
         trace_id=getattr(request.state, "request_id", None),

@@ -38,17 +38,11 @@
             <p>打开钉钉扫一扫，或点击头像确认登录</p>
           </div>
 
-          <div class="qr-area" v-loading="dingtalkLoading || microappLoading">
-            <template v-if="microappLoading">
-              <p class="microapp-tip">正在通过钉钉免登登录…</p>
-            </template>
-            <template v-else-if="qrError">
+          <div class="qr-area" v-loading="dingtalkLoading">
+            <template v-if="qrError">
               <p class="qr-error">{{ qrError }}</p>
               <div class="qr-actions">
                 <el-button size="small" :icon="RefreshRight" @click="onRetryQr">重新加载</el-button>
-                <el-button size="small" :loading="dingtalkFallbackLoading" @click="onDingtalkFallback">
-                  前往钉钉官方页登录
-                </el-button>
               </div>
             </template>
             <DingtalkQrLogin
@@ -60,12 +54,7 @@
             />
           </div>
 
-          <p class="dingtalk-tip">使用钉钉 App 扫码登录；如需本机头像确认，可前往钉钉官方页</p>
-          <div class="quick-dingtalk-row">
-            <el-button type="primary" plain size="small" :loading="dingtalkFallbackLoading" @click="onDingtalkFallback">
-              本机已登录钉钉？点此快速登录
-            </el-button>
-          </div>
+          <p class="dingtalk-tip">使用钉钉 App 扫码登录</p>
           <div class="switch-row">
             <a class="switch-link" @click="onSwitchToLocal">超管登录 →</a>
           </div>
@@ -118,7 +107,6 @@ import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { Lock, RefreshRight, User } from '@element-plus/icons-vue'
 import {
   dingtalkCallback,
-  dingtalkMicroappLogin,
   getDingtalkAuthorizeUrl,
   getLoginMethods,
   login,
@@ -127,10 +115,6 @@ import { useAuthStore } from '@/stores/auth'
 import ContractIcon from '@/components/ContractIcon.vue'
 import DingTalkIcon from '@/components/DingTalkIcon.vue'
 import DingtalkQrLogin from '@/components/DingtalkQrLogin.vue'
-import {
-  isDingTalkContainer,
-  requestDingtalkAuthCode,
-} from '@/composables/useDingtalkMicroapp'
 
 type LoginMode = 'dingtalk' | 'local'
 
@@ -151,15 +135,12 @@ const loadingMethods = ref(true)
 const qrError = ref('')
 const qrKey = ref(0)
 const authorizeUrl = ref('')
-const dingtalkFallbackLoading = ref(false)
 const mode = ref<LoginMode>('local')
 const dingtalkEnabled = ref(false)
 const form = reactive({ username: '', password: '' })
 
 /** 扫码回调处理中标记：防止重复消息触发多次登录请求 */
 const processing = ref(false)
-/** 钉钉客户端内免登进行中标记（仅 DingTalk 容器内为 true） */
-const microappLoading = ref(false)
 
 const rules: FormRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
@@ -172,13 +153,7 @@ onMounted(async () => {
     dingtalkEnabled.value = data.dingtalk_enabled
     if (data.dingtalk_enabled) {
       mode.value = 'dingtalk'
-      if (isDingTalkContainer()) {
-        // 钉钉客户端内：优先走 H5 微应用免登（免扫码），失败自动回退扫码
-        microappLoading.value = true
-        await tryDingtalkMicroappLogin()
-      } else {
-        await initDingtalkQr()
-      }
+      await initDingtalkQr()
     } else {
       mode.value = 'local'
     }
@@ -209,30 +184,6 @@ async function initDingtalkQr() {
   }
 }
 
-/**
- * 钉钉客户端内 H5 微应用免登（《04》第 3.6 节）：
- * JSAPI requestAuthCode 获取免登码 → 后端换登录态；失败回退内嵌二维码，不阻断登录页。
- */
-async function tryDingtalkMicroappLogin() {
-  try {
-    const data = await getDingtalkAuthorizeUrl()
-    const authCode = await requestDingtalkAuthCode(data.corp_id)
-    const token = await dingtalkMicroappLogin(authCode)
-    auth.setTokens(token)
-    ElMessage.success('登录成功')
-    await router.push(
-      token.user.must_change_password
-        ? { name: 'change-password' }
-        : (route.query.redirect as string) || '/',
-    )
-  } catch (e) {
-    console.warn('[dingtalk-microapp] 免登失败，回退扫码登录：', e)
-  } finally {
-    microappLoading.value = false
-  }
-  await initDingtalkQr()
-}
-
 /** 扫码成功：用 authCode + state 调用后端完成登录（不跳转页面） */
 async function onDingtalkSuccess(result: DingtalkLoginResult) {
   if (processing.value) return
@@ -258,30 +209,13 @@ function onDingtalkError(message: string) {
   qrError.value = message
 }
 
-/** 用户主动前往钉钉官方页（支持本机头像确认，不自动触发） */
-async function onDingtalkFallback() {
-  dingtalkFallbackLoading.value = true
-  try {
-    const data = await getDingtalkAuthorizeUrl()
-    window.location.href = data.authorize_url
-  } catch (e) {
-    ElMessage.error((e as Error).message)
-    dingtalkFallbackLoading.value = false
-  }
-}
-
 function onSwitchToLocal() {
   mode.value = 'local'
 }
 
 async function onSwitchToDingtalk() {
   mode.value = 'dingtalk'
-  if (isDingTalkContainer()) {
-    microappLoading.value = true
-    await tryDingtalkMicroappLogin()
-  } else {
-    await initDingtalkQr()
-  }
+  await initDingtalkQr()
 }
 
 function onRetryQr() {
@@ -441,20 +375,10 @@ async function onLogin() {
   text-align: center;
   word-break: break-all;
 }
-.microapp-tip {
-  margin: 0;
-  font-size: 14px;
-  color: #64748b;
-}
 .qr-actions {
   display: flex;
   gap: 8px;
 }
-.quick-dingtalk-row {
-  margin-top: 14px;
-  text-align: center;
-}
-
 .login-card :deep(.el-form-item__label) {
   color: #334155;
 }

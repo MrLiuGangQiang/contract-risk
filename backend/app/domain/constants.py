@@ -10,7 +10,6 @@ USER_STATUS_ACTIVE = 1
 # ==================== 登录方式（sys_login_log.login_method）====================
 LOGIN_METHOD_LOCAL = "local"
 LOGIN_METHOD_DINGTALK = "dingtalk"
-LOGIN_METHOD_DINGTALK_MICROAPP = "dingtalk_microapp"
 
 # ==================== 外部身份 Provider（sys_user_identity.provider）====================
 IDENTITY_PROVIDER_DINGTALK = "dingtalk"
@@ -51,11 +50,6 @@ DINGTALK_USER_INFO_URL = "https://api.dingtalk.com/v1.0/contact/users/me"
 # 新版推荐：应用凭证接口（单组织/多组织统一），corpId 为应用运行企业的组织 ID
 DINGTALK_APP_TOKEN_URL_TEMPLATE = "https://api.dingtalk.com/v1.0/oauth2/{corp_id}/token"
 DINGTALK_APP_TOKEN_GRANT_TYPE = "client_credentials"
-# 微应用免登（H5 微应用，钉钉客户端内）：topapi 老路径仅在 oapi.dingtalk.com 提供服务，
-# 实测接受 api.dingtalk.com 新网关签发的应用 access_token；api.dingtalk.io 虽有同路径但
-# 拒绝该 token（errcode 88/40014），且其 v1.0 凭证接口对存量应用返回 invalid_client。
-DINGTALK_MICROAPP_USER_INFO_URL = "https://oapi.dingtalk.com/topapi/v2/user/getuserinfo"
-DINGTALK_USER_DETAIL_URL = "https://oapi.dingtalk.com/topapi/v2/user/get"
 DINGTALK_STATE_TTL_SECONDS = 600  # 10 分钟
 
 # 最新 OAuth 授权参数（官方《实现网页方式登录应用》）

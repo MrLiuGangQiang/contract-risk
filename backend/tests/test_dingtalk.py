@@ -3,7 +3,6 @@
 from httpx import AsyncClient
 
 from app.core.database import SessionFactory
-from app.core.exceptions import BizException
 from app.domain.constants import IDENTITY_PROVIDER_DINGTALK, USER_STATUS_DISABLED
 from app.integrations.dingtalk import DingTalkClient
 from app.models.user import User, UserIdentity
@@ -182,85 +181,6 @@ async def test_dingtalk_callback_state_single_use(
     assert resp.json()["code"] == 30021
 
 
-async def _mock_microapp_apis(
-    monkeypatch, *, name: str = "张三", union_id: str = "u123", with_avatar: bool = True
-) -> None:
-    """mock 钉钉免登身份与用户详情接口（头像为尽力而为）。"""
-
-    async def fake_get_userid(self: DingTalkClient, auth_code: str) -> dict:
-        assert auth_code == "valid-micro-code"
-        return {"userid": "userid123", "unionid": union_id, "name": name, "sys": False, "sys_level": 0}
-
-    async def fake_get_detail(self: DingTalkClient, user_id: str) -> dict | None:
-        assert user_id == "userid123"
-        if not with_avatar:
-            return None
-        return {"userid": "userid123", "unionid": union_id, "name": name, "avatar": "http://avatar/micro.png"}
-
-    monkeypatch.setattr(DingTalkClient, "get_userid_by_auth_code", fake_get_userid)
-    monkeypatch.setattr(DingTalkClient, "get_user_detail", fake_get_detail)
-
-
-async def test_microapp_login_not_configured(client: AsyncClient, fresh_admin) -> None:
-    """钉钉未启用时微应用免登返回 10002。"""
-    resp = await client.post("/api/v1/auth/dingtalk/microapp-login", json={"auth_code": "x"})
-    assert resp.json()["code"] == 10002
-
-
-async def test_microapp_login_creates_user(
-    client: AsyncClient, admin_token: str, monkeypatch
-) -> None:
-    """首次微应用免登：自动建号 + 身份绑定 + user 角色 + 头像同步 + 签发令牌。"""
-    await _configure_dingtalk(client, admin_token)
-    await _mock_microapp_apis(monkeypatch)
-
-    resp = await client.post(
-        "/api/v1/auth/dingtalk/microapp-login", json={"auth_code": "valid-micro-code"}
-    )
-    body = resp.json()
-    assert resp.status_code == 200 and body["code"] == 0, body
-    assert body["data"]["user"]["display_name"] == "张三"
-    assert body["data"]["user"]["avatar_url"] == "http://avatar/micro.png"
-    assert body["data"]["user"]["roles"] == ["user"]
-    assert "refresh_token" in resp.cookies
-
-    async with SessionFactory() as session:
-        user = await UserRepository(session).get_by_union_id(IDENTITY_PROVIDER_DINGTALK, "u123")
-        assert user is not None and user.display_name == "张三"
-
-
-async def test_microapp_login_skips_avatar_without_permission(
-    client: AsyncClient, admin_token: str, monkeypatch
-) -> None:
-    """未开通 qyapi_get_member 时（用户详情失败）仅同步姓名，登录不阻断。"""
-    await _configure_dingtalk(client, admin_token)
-    await _mock_microapp_apis(monkeypatch, name="李四", union_id="u456", with_avatar=False)
-
-    resp = await client.post(
-        "/api/v1/auth/dingtalk/microapp-login", json={"auth_code": "valid-micro-code"}
-    )
-    body = resp.json()
-    assert resp.status_code == 200 and body["code"] == 0, body
-    assert body["data"]["user"]["display_name"] == "李四"
-    assert body["data"]["user"]["avatar_url"] is None
-
-
-async def test_microapp_login_invalid_code(
-    client: AsyncClient, admin_token: str, monkeypatch
-) -> None:
-    """免登码无效（errcode=40078 映射）应返回 30020。"""
-    await _configure_dingtalk(client, admin_token)
-
-    async def fake_fail(self: DingTalkClient, auth_code: str) -> dict:
-        raise BizException(30020, "钉钉免登码无效或已过期，请重试")
-
-    monkeypatch.setattr(DingTalkClient, "get_userid_by_auth_code", fake_fail)
-    resp = await client.post(
-        "/api/v1/auth/dingtalk/microapp-login", json={"auth_code": "bad-code"}
-    )
-    assert resp.json()["code"] == 30020
-
-
 class _FakeTokenResponse:
     """模拟钉钉新接口成功响应。"""
 
@@ -313,56 +233,3 @@ async def test_app_access_token_uses_new_api(monkeypatch) -> None:
         "client_secret": "ding-secret",
         "grant_type": "client_credentials",
     }
-
-
-class _FakeMicroappResponse:
-    """模拟钉钉免登接口成功响应。"""
-
-    status_code = 200
-
-    def json(self) -> dict:
-        return {"errcode": 0, "errmsg": "ok", "result": {"userid": "u1", "unionid": "union1", "name": "张三"}}
-
-
-class _FakeMicroappClient:
-    """模拟 httpx.AsyncClient，捕获请求 URL 与 body。"""
-
-    def __init__(self, *, captured: dict) -> None:
-        self._captured = captured
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, *args) -> None:
-        return None
-
-    async def post(self, url: str, json: dict) -> _FakeMicroappResponse:
-        self._captured["url"] = url
-        self._captured["json"] = dict(json)
-        return _FakeMicroappResponse()
-
-
-async def test_microapp_userinfo_uses_oapi_domain(monkeypatch) -> None:
-    """免登换身份必须调用 oapi.dingtalk.com/topapi/v2/user/getuserinfo（实测网关）。"""
-    captured: dict = {}
-
-    async def fake_app_token(self: DingTalkClient) -> str:
-        return "app-token"
-
-    def fake_client(*args, **kwargs):
-        return _FakeMicroappClient(captured=captured)
-
-    monkeypatch.setattr(DingTalkClient, "get_app_access_token", fake_app_token)
-    monkeypatch.setattr("app.integrations.dingtalk.httpx.AsyncClient", fake_client)
-    client = DingTalkClient(
-        client_id="ding123",
-        client_secret="ding-secret",
-        corp_id="dingcorp123",
-        redirect_uri="http://localhost:5173/dingtalk/callback",
-    )
-    result = await client.get_userid_by_auth_code("tmp-code")
-    assert result["unionid"] == "union1"
-    assert captured["url"] == (
-        "https://oapi.dingtalk.com/topapi/v2/user/getuserinfo?access_token=app-token"
-    )
-    assert captured["json"] == {"code": "tmp-code"}
