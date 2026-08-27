@@ -72,12 +72,19 @@ class ContractScanJobService:
         async with SessionFactory() as session:
             svc = ContractRiskService(session)
 
+            last_stage = {"value": ""}
+
             async def progress(percent: int, stage: str) -> None:
                 await job_store.update_job(
                     job_id, progress=percent, stage=stage, stage_message=stage
                 )
+                if stage != last_stage["value"]:
+                    await job_store.append_event(job_id, stage)
+                    last_stage["value"] = stage
 
             try:
+                await job_store.append_event(job_id, "任务已创建")
+                await job_store.append_event(job_id, f"正在上传文件：{file_name}")
                 await job_store.update_job(job_id, progress=10, stage="reading", stage_message="正在读取合同文件")
                 result = await svc.upload(
                     user_id=user_id,
@@ -95,9 +102,11 @@ class ContractScanJobService:
                     contract_id=result.contract.id,
                     risk_count=result.contract.risk_count,
                 )
+                await job_store.append_event(job_id, f"扫描完成：共 {result.contract.risk_count} 项风险")
                 logger.info("contract scan job done", extra={"job_id": job_id, "contract_id": result.contract.id})
             except Exception as exc:
                 await job_store.update_job(job_id, status="failed", stage="failed", stage_message=str(exc))
+                await job_store.append_event(job_id, f"扫描失败：{exc}", level="error")
                 logger.warning("contract scan job failed", extra={"job_id": job_id, "error": str(exc)})
 
     async def _run_rescan(self, job_id: str, user_id: int, contract_id: int) -> None:
@@ -105,12 +114,18 @@ class ContractScanJobService:
         async with SessionFactory() as session:
             svc = ContractRiskService(session)
 
+            last_stage = {"value": ""}
+
             async def progress(percent: int, stage: str) -> None:
                 await job_store.update_job(
                     job_id, progress=percent, stage=stage, stage_message=stage
                 )
+                if stage != last_stage["value"]:
+                    await job_store.append_event(job_id, stage)
+                    last_stage["value"] = stage
 
             try:
+                await job_store.append_event(job_id, "开始重新扫描")
                 result = await svc.rescan(
                     user_id=user_id,
                     contract_id=contract_id,
@@ -126,7 +141,9 @@ class ContractScanJobService:
                     contract_id=result.contract.id,
                     risk_count=result.contract.risk_count,
                 )
+                await job_store.append_event(job_id, f"重新扫描完成：共 {result.contract.risk_count} 项风险")
                 logger.info("contract rescan job done", extra={"job_id": job_id, "contract_id": result.contract.id})
             except Exception as exc:
                 await job_store.update_job(job_id, status="failed", stage="failed", stage_message=str(exc))
+                await job_store.append_event(job_id, f"扫描失败：{exc}", level="error")
                 logger.warning("contract rescan job failed", extra={"job_id": job_id, "error": str(exc)})

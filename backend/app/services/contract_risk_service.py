@@ -8,6 +8,7 @@ import io
 import json
 import logging
 import re
+import time
 import uuid
 
 import httpx
@@ -243,11 +244,25 @@ class ContractRiskService:
 
         await notify(20, "正在提取合同文本")
         text = await asyncio.to_thread(_parse_document, ext, content)
+        await notify(30, f"文本提取完成：{len(text)} 字符")
         await notify(45, "正在执行规则匹配")
         rules = await self._risk_rule_service.list_effective(user_id)
         hits = _scan_text(text, rules)
-        await notify(70, "AI 正在分析风险")
-        hits = _merge_hits(hits, await self._analyze_with_ai(text, rules))
+        await notify(55, f"规则匹配完成：命中 {len(hits)} 项")
+        await notify(70, "AI 正在深度分析")
+        ai_started = time.monotonic()
+        heartbeat = (
+            asyncio.create_task(self._ai_heartbeat(progress_cb, ai_started))
+            if progress_cb is not None
+            else None
+        )
+        try:
+            ai_hits = await self._analyze_with_ai(text, rules)
+        finally:
+            if heartbeat is not None:
+                heartbeat.cancel()
+        hits = _merge_hits(hits, ai_hits)
+        await notify(80, f"AI 深度分析完成：新增 {len(ai_hits)} 项")
 
         settings = get_settings()
         upload_path = Path(settings.upload_dir)
@@ -321,12 +336,24 @@ class ContractRiskService:
         contract = await self._get_or_404(user_id, contract_id)
         await notify(20, "正在读取合同内容")
         rules = await self._risk_rule_service.list_effective(user_id)
+        await notify(35, f"已准备 {len(rules)} 条生效规则")
         await notify(50, "正在执行规则匹配")
         hits = _scan_text(contract.text_content, rules)
-        await notify(70, "AI 正在分析风险")
-        hits = _merge_hits(
-            hits, await self._analyze_with_ai(contract.text_content, rules)
+        await notify(60, f"规则匹配完成：命中 {len(hits)} 项")
+        await notify(70, "AI 正在深度分析")
+        ai_started = time.monotonic()
+        heartbeat = (
+            asyncio.create_task(self._ai_heartbeat(progress_cb, ai_started))
+            if progress_cb is not None
+            else None
         )
+        try:
+            ai_hits = await self._analyze_with_ai(contract.text_content, rules)
+        finally:
+            if heartbeat is not None:
+                heartbeat.cancel()
+        hits = _merge_hits(hits, ai_hits)
+        await notify(80, f"AI 深度分析完成：新增 {len(ai_hits)} 项")
         await notify(90, "正在生成风险结果")
         risks = await self._save_risks(contract, user_id, hits)
         await self._update_contract_counts(contract, hits)
@@ -352,6 +379,16 @@ class ContractRiskService:
 
     # ==================== 私有 ====================
 
+    async def _ai_heartbeat(
+        self,
+        progress_cb: Callable[[int, str], Awaitable[None]],
+        started: float,
+    ) -> None:
+        """AI 调用期间每 3 秒刷新一次“还在思考”提示，让用户看到进度。"""
+        while True:
+            await asyncio.sleep(3)
+            elapsed = int(time.monotonic() - started)
+            await progress_cb(70, f"AI 正在深度分析中（已等待 {elapsed} 秒）...")
     async def _analyze_with_ai(self, text: str, rules: list[Any]) -> list[dict[str, Any]]:
         """AI enhanced analysis via OpenAI-compatible API. Falls back to empty on any failure."""
         cfg = await self._ai_config_service.get_plain()

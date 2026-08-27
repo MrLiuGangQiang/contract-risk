@@ -3,6 +3,7 @@
 任务生命周期短（默认 10 分钟），数据可重建，不作为业务唯一数据源。
 """
 import json
+from datetime import datetime
 from typing import Any
 
 from app.domain.constants import REDIS_CONTRACT_JOB_PREFIX
@@ -29,6 +30,18 @@ async def update_job(job_id: str, **fields: Any) -> None:
         return
     data = json.loads(raw)
     data.update(fields)
+    await redis_client.get_redis().set(_job_key(job_id), json.dumps(data, ensure_ascii=False), ex=JOB_TTL_SECONDS)
+
+
+async def append_event(job_id: str, message: str, level: str = "info") -> None:
+    """追加任务日志事件（前端终端式滚动展示）。"""
+    raw = await redis_client.get_redis().get(_job_key(job_id))
+    if raw is None:
+        return
+    data = json.loads(raw)
+    events = data.get("events") or []
+    events.append({"time": datetime.now().strftime("%H:%M:%S"), "level": level, "message": message})
+    data["events"] = events[-100:]
     await redis_client.get_redis().set(_job_key(job_id), json.dumps(data, ensure_ascii=False), ex=JOB_TTL_SECONDS)
 
 

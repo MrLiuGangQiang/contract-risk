@@ -42,6 +42,12 @@ export interface ContractDetail {
 
 export type ContractJobStatus = 'running' | 'done' | 'failed'
 
+export interface ContractJobEvent {
+  time: string
+  level: 'info' | 'error'
+  message: string
+}
+
 export interface ContractJob {
   job_id?: string
   status: ContractJobStatus
@@ -52,4 +58,5 @@ export interface ContractJob {
   risk_count?: number
   user_id?: number
   error?: string
+  events?: ContractJobEvent[]
 }

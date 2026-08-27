@@ -118,6 +118,22 @@
             </span>
           </div>
           <el-progress :percentage="scanJob?.progress ?? 0" :stroke-width="10" :show-text="false" />
+          <div ref="logRef" class="scan-log">
+            <div
+              v-for="(ev, i) in scanJob?.events || []"
+              :key="i"
+              class="scan-log-line"
+              :class="{ error: ev.level === 'error' }"
+            >
+              <span class="log-time">{{ ev.time }}</span>
+              <span>{{ ev.message }}</span>
+            </div>
+            <div v-if="scanJob?.status === 'running'" class="scan-log-line current">
+              <span class="log-time">{{ currentTime }}</span>
+              <span class="current-text">{{ scanJob.stage_message }}</span>
+              <span class="scan-dots"><i></i><i></i><i></i></span>
+            </div>
+          </div>
           <div class="scan-steps">
             <div v-for="step in steps" :key="step.progress" class="scan-step" :class="{ active: (scanJob?.progress ?? 0) >= step.progress }">
               <span class="scan-step-icon">{{ (scanJob?.progress ?? 0) >= step.progress ? '✓' : '·' }}</span>
@@ -132,7 +148,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Search, Upload } from '@element-plus/icons-vue'
 import {
@@ -189,6 +205,8 @@ const currentDetailId = ref(0)
 
 const scanVisible = ref(false)
 const scanJob = ref<ContractJob | null>(null)
+const logRef = ref<HTMLDivElement>()
+const currentTime = ref('')
 let polling = false
 
 const groupedRisks = computed<Record<string, ContractRisk[]>>(() => {
@@ -198,6 +216,12 @@ const groupedRisks = computed<Record<string, ContractRisk[]>>(() => {
     groups[risk.category].push(risk)
   }
   return groups
+})
+
+watch(scanJob, async () => {
+  currentTime.value = new Date().toLocaleTimeString('zh-CN', { hour12: false })
+  await nextTick()
+  logRef.value?.scrollTo({ top: logRef.value.scrollHeight, behavior: 'smooth' })
 })
 
 onMounted(loadList)
@@ -515,6 +539,37 @@ function formatTime(value: string | null): string {
 @keyframes blink {
   0%, 80%, 100% { opacity: 0.2; }
   40% { opacity: 1; }
+}
+.scan-log {
+  margin-top: 12px;
+  padding: 10px 12px;
+  max-height: 180px;
+  overflow-y: auto;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #cbd5e1;
+  font-family: Consolas, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.scan-log-line {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.scan-log-line.error {
+  color: #f87171;
+}
+.scan-log-line.current {
+  color: #93c5fd;
+  font-weight: 600;
+}
+.log-time {
+  flex-shrink: 0;
+  color: #64748b;
+}
+.current-text {
+  white-space: pre-wrap;
 }
 .scan-steps {
   margin-top: 18px;
