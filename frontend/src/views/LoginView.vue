@@ -394,10 +394,16 @@ async function onLogin() {
 .dingtalk-head h2 {
   margin: 0;
   font-size: 16px;
-  line-height: 1;
+  line-height: 20px;
+  white-space: nowrap;
+  /* 中文文字光学中心比盒中心低约 2px，上移修正与图标的视觉对齐 */
+  transform: translateY(-2px);
 }
 .dingtalk-icon {
+  width: 20px;
+  height: 20px;
   display: block;
+  flex-shrink: 0;
 }
 .card-head h2 {
   margin: 10px 0 4px;
