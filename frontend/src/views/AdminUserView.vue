@@ -1,5 +1,6 @@
 <template>
-  <div class="user-manage">
+  <AppLayout>
+    <div class="user-manage">
     <el-card class="toolbar-card" shadow="never">
       <div class="toolbar">
         <div class="toolbar-left">
@@ -140,11 +141,13 @@
         <el-button type="primary" :loading="resetSaving" @click="submitReset">确定</el-button>
       </template>
     </el-dialog>
-  </div>
+    </div>
+  </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import AppLayout from '@/components/AppLayout.vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Plus, Search } from '@element-plus/icons-vue'
 import {

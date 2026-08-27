@@ -20,7 +20,7 @@
           <el-icon><setting /></el-icon>
           <span>钉钉配置</span>
         </el-menu-item>
-        <el-menu-item v-if="auth.isSuperAdmin" index="/admin/users">
+        <el-menu-item v-if="auth.isSuperAdmin || auth.user?.permissions?.includes('user:manage')" index="/admin/users">
           <el-icon><user-filled /></el-icon>
           <span>用户与角色</span>
         </el-menu-item>

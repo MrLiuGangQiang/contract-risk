@@ -1,5 +1,6 @@
 <template>
-  <div class="change-password-page brand-gradient">
+  <AppLayout>
+    <div class="change-password-page brand-gradient">
     <div class="auth-card">
       <div class="auth-head">
         <div class="auth-logo">
@@ -39,7 +40,8 @@
         </el-button>
       </el-form>
     </div>
-  </div>
+    </div>
+  </AppLayout>
 </template>
 
 <script setup lang="ts">
@@ -49,6 +51,7 @@ import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { Lock } from '@element-plus/icons-vue'
 import { changePassword } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
+import AppLayout from '@/components/AppLayout.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
