@@ -71,8 +71,8 @@
         <template v-else>
           <div class="card-head center admin-head">
             <span class="admin-icon-wrap"><Lock /></span>
-            <h2>超管登录</h2>
-            <p>使用管理员账号登录系统</p>
+            <h2>管理员登录</h2>
+            <p>账号仅限系统管理员使用</p>
           </div>
           <div class="form-divider"></div>
 
@@ -101,9 +101,7 @@
             </el-button>
           </el-form>
           <div v-if="dingtalkEnabled" class="switch-row">
-            <button class="switch-pill" type="button" @click="onSwitchToDingtalk">
-              返回钉钉登录
-            </button>
+            <a class="switch-link" @click="onSwitchToDingtalk">← 返回钉钉登录</a>
           </div>
         </template>
       </div>
@@ -371,11 +369,13 @@ async function onLogin() {
 }
 .login-card {
   width: 100%;
-  max-width: 332px;
-  padding: 16px;
+  max-width: 364px;
+  padding: 26px 32px 20px;
   background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.1);
+  border-radius: 18px;
+  box-shadow:
+    0 0 0 1px rgba(37, 99, 235, 0.06),
+    0 24px 64px rgba(37, 99, 235, 0.12);
 }
 .card-head {
   margin-bottom: 14px;
@@ -412,18 +412,24 @@ async function onLogin() {
   color: #94a3b8;
 }
 .admin-head {
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+}
+.admin-head h2 {
+  font-size: 21px;
+  letter-spacing: 2px;
 }
 .admin-icon-wrap {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
+  border-radius: 50%;
   color: #fff;
   background: linear-gradient(135deg, #2563eb, #7c3aed);
-  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.28);
+  box-shadow:
+    0 0 0 8px rgba(37, 99, 235, 0.08),
+    0 14px 28px rgba(37, 99, 235, 0.28);
 }
 .form-divider {
   height: 1px;
@@ -506,12 +512,13 @@ async function onLogin() {
 }
 .login-btn {
   width: 100%;
+  height: 44px;
   margin-top: 6px;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   letter-spacing: 4px;
   background: linear-gradient(90deg, #2563eb, #7c3aed);
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.28);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.28);
 }
 .login-btn:hover {
   background: linear-gradient(90deg, #1d4ed8, #6d28d9);
