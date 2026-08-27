@@ -5,10 +5,11 @@
   库中的业务表（TRUNCATE）；
 - 因此必须在运行测试前显式设置 `ALLOW_DESTRUCTIVE_TEST_DB=1`，否则直接拒绝启动，
   防止误清开发/生产数据。
-- Redis：使用独立 db（REDIS_DB=2），测试前后清空；
+- Redis：使用独立 db（REDIS_URL 指向 db=2），测试前后清空；
 - 初始超管：使用专用测试账号 test_admin，避免污染真实超管。
 """
 import os
+from pathlib import Path
 
 # 必须在导入 app 之前设置测试环境变量（settings 首次加载时生效）
 if os.environ.get("ALLOW_DESTRUCTIVE_TEST_DB") != "1":
@@ -16,7 +17,30 @@ if os.environ.get("ALLOW_DESTRUCTIVE_TEST_DB") != "1":
         "Refusing to run tests: pytest will TRUNCATE the shared contract_risk DB. "
         "Set ALLOW_DESTRUCTIVE_TEST_DB=1 only if you explicitly want this."
     )
-os.environ["REDIS_DB"] = "2"
+
+
+def _test_redis_url() -> str:
+    """从 backend/.env 读取 Redis 连接并切到独立 db=2（测试隔离；不硬编码密码）。"""
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    vals: dict[str, str] = {}
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            vals[key.strip()] = value.strip().strip('"').strip("'")
+    if vals.get("REDIS_URL"):
+        base, _, _db = vals["REDIS_URL"].rpartition("/")
+        return f"{base}/2"
+    host = vals.get("REDIS_HOST", "127.0.0.1")
+    port = vals.get("REDIS_PORT", "6379")
+    password = vals.get("REDIS_PASSWORD", "")
+    auth = f":{password}@" if password else ""
+    return f"redis://{auth}{host}:{port}/2"
+
+
+os.environ["REDIS_URL"] = _test_redis_url()
 os.environ["ADMIN_USERNAME"] = "test_admin"
 os.environ["ADMIN_PASSWORD"] = "Test@123456"
 os.environ["FERNET_KEY"] = "test-fernet-key-0123456789abcdef"

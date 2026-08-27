@@ -18,7 +18,7 @@ from app.core.config import get_settings
 _settings = get_settings()
 
 _engine = create_async_engine(
-    _settings.get_database_url(),
+    _settings.database_url,
     echo=_settings.db_echo,
     pool_size=_settings.db_pool_size,
     max_overflow=_settings.db_max_overflow,

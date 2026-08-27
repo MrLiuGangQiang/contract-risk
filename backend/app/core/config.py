@@ -38,50 +38,23 @@ class Settings(BaseSettings):
     # ===== 加密主密钥（Fernet，生产环境必须替换）=====
     fernet_key: str = "please-change-me"
 
-    # ===== PostgreSQL（推荐聚合 DATABASE_URL；留空则按 POSTGRES_* 组装，见《02》4.6）=====
-    database_url: str = ""
-    postgres_host: str = "127.0.0.1"
-    postgres_port: int = 5432
-    postgres_db: str = "contract_risk"
-    postgres_user: str = "app_user"
-    postgres_password: str = ""
+    # ===== 数据源连接（聚合格式，必填；见《02》4.6）=====
+    database_url: str  # 例如 postgresql+asyncpg://app_user:密码@host:5432/contract_risk
+    redis_url: str     # 例如 redis://:密码@host:6379/0
 
-    # ===== 数据库连接池（SQLAlchemy async + asyncpg，见《02》4.6 /《09》第 2 节）=====
+    # ===== 连接池（SQLAlchemy async + asyncpg / Redis，见《02》4.6 /《09》第 2 节）=====
     db_pool_size: int = 10
     db_max_overflow: int = 20
     db_pool_timeout: int = 30
     db_pool_recycle: int = 1800
     db_pool_pre_ping: bool = True
     db_echo: bool = False
-
-    # ===== Redis（推荐聚合 REDIS_URL；留空则按 REDIS_* 组装）=====
-    redis_url: str = ""
-    redis_host: str = "127.0.0.1"
-    redis_port: int = 6379
-    redis_db: int = 0
-    redis_password: str = ""
     redis_max_connections: int = 50
 
     # ===== 钉钉（初始值；运行时以 sys_config 中超管配置为准）=====
     dingtalk_client_id: str = ""
     dingtalk_client_secret: str = ""
     dingtalk_redirect_uri: str = "http://localhost:5173/dingtalk/callback"
-
-    def get_database_url(self) -> str:
-        """数据库连接串：优先 DATABASE_URL（聚合格式），否则由 POSTGRES_* 组装（兼容旧写法）。"""
-        if self.database_url:
-            return self.database_url
-        return (
-            f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}"
-            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
-        )
-
-    def get_redis_url(self) -> str:
-        """Redis 连接串：优先 REDIS_URL（聚合格式），否则由 REDIS_* 组装（兼容旧写法）。"""
-        if self.redis_url:
-            return self.redis_url
-        auth = f":{self.redis_password}@" if self.redis_password else ""
-        return f"redis://{auth}{self.redis_host}:{self.redis_port}/{self.redis_db}"
 
 
 @lru_cache
