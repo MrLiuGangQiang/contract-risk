@@ -24,7 +24,7 @@
           <el-icon><user-filled /></el-icon>
           <span>用户与角色</span>
         </el-menu-item>
-        <el-menu-item v-if="auth.isSuperAdmin || auth.user?.permissions?.includes('risk:rule:manage')" index="/admin/risk-rules">
+        <el-menu-item index="/risk-rules">
           <el-icon><warning /></el-icon>
           <span>风险规则</span>
         </el-menu-item>

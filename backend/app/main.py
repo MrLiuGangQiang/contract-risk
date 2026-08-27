@@ -12,6 +12,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api.v1.admin.router import router as admin_router
 from app.api.v1.auth.router import router as auth_router
 from app.api.v1.health import router as health_router
+from app.api.v1.risk_rules import router as risk_rules_router
 from app.core.config import get_settings
 from app.core.database import SessionFactory
 from app.core.exceptions import BizException
@@ -106,6 +107,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(admin_router, prefix="/api/v1")
+    app.include_router(risk_rules_router, prefix="/api/v1")
     return app
 
 

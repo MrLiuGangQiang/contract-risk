@@ -194,6 +194,46 @@ export async function exportRiskRules(): Promise<Blob> {
   }
 }
 
+// ==================== 个人风险规则（《10》第 5.2 节）====================
+
+export async function listMyRiskRules(): Promise<RiskRule[]> {
+  try {
+    const resp = await client.get('/risk-rules')
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+    return resp.data.data
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+
+export async function updateMyRiskRule(code: string, payload: RiskRulePayload): Promise<RiskRule> {
+  try {
+    const resp = await client.put(`/risk-rules/me/${encodeURIComponent(code)}`, payload)
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+    return resp.data.data
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+
+export async function deleteMyRiskRule(code: string): Promise<void> {
+  try {
+    const resp = await client.delete(`/risk-rules/me/${encodeURIComponent(code)}`)
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+
+export async function restoreMyRiskRules(): Promise<void> {
+  try {
+    const resp = await client.post('/risk-rules/me/restore-default')
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+
 export async function listRoles(): Promise<Role[]> {
   try {
     const resp = await client.get('/admin/roles')

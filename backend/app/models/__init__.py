@@ -2,7 +2,7 @@
 from app.models.base import Base
 from app.models.config import SysConfig
 from app.models.log import LoginLog, OperationLog
-from app.models.risk_rule import RiskRule
+from app.models.risk_rule import RiskRule, RiskRuleCustom
 from app.models.user import (
     Permission,
     Role,
@@ -18,6 +18,7 @@ __all__ = [
     "LoginLog",
     "OperationLog",
     "RiskRule",
+    "RiskRuleCustom",
     "User",
     "UserIdentity",
     "Role",

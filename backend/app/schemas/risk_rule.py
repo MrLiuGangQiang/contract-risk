@@ -36,7 +36,7 @@ class RiskRuleUpdate(BaseModel):
 
 
 class RiskRuleOut(BaseModel):
-    """规则响应。"""
+    """规则响应（source=global/custom，标识来源）。"""
 
     id: int
     code: str
@@ -48,6 +48,8 @@ class RiskRuleOut(BaseModel):
     suggestion: str
     enabled: bool
     sort_order: int
+    source: str = "global"
+    is_custom: bool = False
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -59,6 +61,10 @@ class RiskRulePageOut(BaseModel):
     total: int = 0
     page: int = 1
     page_size: int = 20
+
+
+class RiskRuleCustomIn(RiskRuleUpdate):
+    """个人副本保存请求（code 在路径中，不随 body 修改）。"""
 
 
 class RiskRuleImportIn(BaseModel):

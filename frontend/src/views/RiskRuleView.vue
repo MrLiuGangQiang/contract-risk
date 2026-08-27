@@ -4,92 +4,144 @@
       <el-card class="toolbar-card" shadow="never">
         <div class="toolbar">
           <div class="toolbar-left">
-            <h3>合同风险规则</h3>
-            <span class="toolbar-desc">维护合同风险扫描规则：支持在线编辑、Markdown 导入导出（仅超管）</span>
-          </div>
-          <div class="toolbar-right">
-            <el-input
-              v-model="keyword"
-              placeholder="搜索编码 / 名称"
-              clearable
-              style="width: 200px"
-              @keyup.enter="onSearch"
-              @clear="onSearch"
-            >
-              <template #prefix><el-icon><search /></el-icon></template>
-            </el-input>
-            <el-select v-model="category" placeholder="分类" clearable style="width: 130px" @change="onSearch">
-              <el-option v-for="(label, value) in categoryMap" :key="value" :label="label" :value="value" />
-            </el-select>
-            <el-select v-model="severity" placeholder="级别" clearable style="width: 110px" @change="onSearch">
-              <el-option v-for="(label, value) in severityMap" :key="value" :label="label" :value="value" />
-            </el-select>
-            <el-button type="primary" :icon="Plus" @click="openCreate">新建规则</el-button>
-            <el-button :icon="Upload" @click="openImport">导入</el-button>
-            <el-button :icon="Download" :loading="exporting" @click="onExport">导出</el-button>
+            <h3>合同风险扫描规则</h3>
+            <span class="toolbar-desc">默认使用全局模板；可修改自己的规则副本，互不影响</span>
           </div>
         </div>
       </el-card>
 
-      <el-card shadow="never">
-        <el-table v-loading="loading" :data="rules" stripe>
-          <el-table-column prop="id" label="ID" width="70" />
-          <el-table-column prop="code" label="编码" min-width="150" show-overflow-tooltip />
-          <el-table-column prop="name" label="规则名称" min-width="160" show-overflow-tooltip />
-          <el-table-column label="分类" width="110">
-            <template #default="{ row }">{{ categoryMap[row.category] ?? row.category }}</template>
-          </el-table-column>
-          <el-table-column label="级别" width="90">
-            <template #default="{ row }">
-              <el-tag :type="severityType(row.severity)" size="small">
-                {{ severityMap[row.severity] ?? row.severity }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="关键词" min-width="200" show-overflow-tooltip>
-            <template #default="{ row }">{{ row.keywords.join(', ') || '-' }}</template>
-          </el-table-column>
-          <el-table-column label="启用" width="80">
-            <template #default="{ row }">
-              <el-tag :type="row.enabled ? 'success' : 'info'" size="small">
-                {{ row.enabled ? '启用' : '停用' }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="sort_order" label="排序" width="70" />
-          <el-table-column label="更新时间" min-width="150">
-            <template #default="{ row }">{{ formatTime(row.updated_at) }}</template>
-          </el-table-column>
-          <el-table-column label="操作" width="150" fixed="right">
-            <template #default="{ row }">
-              <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
-              <el-button link type="danger" @click="onDelete(row)">删除</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-        <div class="pager">
-          <el-pagination
-            v-model:current-page="page"
-            v-model:page-size="pageSize"
-            :total="total"
-            :page-sizes="[10, 20, 50]"
-            layout="total, sizes, prev, pager, next"
-            @current-change="loadRules"
-            @size-change="loadRules"
-          />
-        </div>
-      </el-card>
+      <el-tabs v-model="activeTab">
+        <!-- ==================== 我的规则 ==================== -->
+        <el-tab-pane label="我的规则" name="mine">
+          <el-card shadow="never">
+            <div class="tab-toolbar">
+              <div class="tab-filters">
+                <el-input v-model="mineKeyword" placeholder="搜索编码 / 名称" clearable style="width: 200px">
+                  <template #prefix><el-icon><search /></el-icon></template>
+                </el-input>
+                <el-select v-model="mineCategory" placeholder="分类" clearable style="width: 130px">
+                  <el-option v-for="(label, value) in categoryMap" :key="value" :label="label" :value="value" />
+                </el-select>
+                <el-select v-model="mineSeverity" placeholder="级别" clearable style="width: 110px">
+                  <el-option v-for="(label, value) in severityMap" :key="value" :label="label" :value="value" />
+                </el-select>
+              </div>
+              <el-button type="warning" plain :icon="RefreshLeft" :disabled="mineRules.every((r) => !r.is_custom)" @click="onRestoreAll">
+                一键恢复默认
+              </el-button>
+            </div>
 
-      <!-- 新建/编辑 -->
+            <el-table v-loading="mineLoading" :data="filteredMine" stripe>
+              <el-table-column label="来源" width="90">
+                <template #default="{ row }">
+                  <el-tag :type="row.is_custom ? 'warning' : 'info'" size="small">
+                    {{ row.is_custom ? '自定义' : '默认' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="code" label="编码" min-width="140" show-overflow-tooltip />
+              <el-table-column prop="name" label="规则名称" min-width="150" show-overflow-tooltip />
+              <el-table-column label="分类" width="110">
+                <template #default="{ row }">{{ categoryMap[row.category] ?? row.category }}</template>
+              </el-table-column>
+              <el-table-column label="级别" width="90">
+                <template #default="{ row }">
+                  <el-tag :type="severityType(row.severity)" size="small">{{ severityMap[row.severity] ?? row.severity }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="关键词" min-width="180" show-overflow-tooltip>
+                <template #default="{ row }">{{ row.keywords.join(', ') || '-' }}</template>
+              </el-table-column>
+              <el-table-column label="启用" width="80">
+                <template #default="{ row }">
+                  <el-tag :type="row.enabled ? 'success' : 'info'" size="small">{{ row.enabled ? '启用' : '停用' }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="170" fixed="right">
+                <template #default="{ row }">
+                  <el-button link type="primary" @click="openEditMine(row)">编辑</el-button>
+                  <el-button v-if="row.is_custom" link type="warning" @click="onRestoreOne(row)">恢复默认</el-button>
+                  <span v-else class="muted">跟随全局</span>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-card>
+        </el-tab-pane>
+
+        <!-- ==================== 全局模板（管理员） ==================== -->
+        <el-tab-pane v-if="canManageGlobal" label="全局模板" name="global">
+          <el-card shadow="never">
+            <div class="tab-toolbar">
+              <div class="tab-filters">
+                <el-input v-model="globalKeyword" placeholder="搜索编码 / 名称" clearable style="width: 200px" @keyup.enter="loadGlobal" @clear="loadGlobal">
+                  <template #prefix><el-icon><search /></el-icon></template>
+                </el-input>
+                <el-select v-model="globalCategory" placeholder="分类" clearable style="width: 130px" @change="loadGlobal">
+                  <el-option v-for="(label, value) in categoryMap" :key="value" :label="label" :value="value" />
+                </el-select>
+                <el-select v-model="globalSeverity" placeholder="级别" clearable style="width: 110px" @change="loadGlobal">
+                  <el-option v-for="(label, value) in severityMap" :key="value" :label="label" :value="value" />
+                </el-select>
+              </div>
+              <div class="tab-actions">
+                <el-button type="primary" :icon="Plus" @click="openCreateGlobal">新建规则</el-button>
+                <el-button :icon="Upload" @click="openImport">导入</el-button>
+                <el-button :icon="Download" :loading="exporting" @click="onExport">导出</el-button>
+              </div>
+            </div>
+
+            <el-table v-loading="globalLoading" :data="globalRules" stripe>
+              <el-table-column prop="code" label="编码" min-width="140" show-overflow-tooltip />
+              <el-table-column prop="name" label="规则名称" min-width="150" show-overflow-tooltip />
+              <el-table-column label="分类" width="110">
+                <template #default="{ row }">{{ categoryMap[row.category] ?? row.category }}</template>
+              </el-table-column>
+              <el-table-column label="级别" width="90">
+                <template #default="{ row }">
+                  <el-tag :type="severityType(row.severity)" size="small">{{ severityMap[row.severity] ?? row.severity }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="关键词" min-width="180" show-overflow-tooltip>
+                <template #default="{ row }">{{ row.keywords.join(', ') || '-' }}</template>
+              </el-table-column>
+              <el-table-column label="启用" width="80">
+                <template #default="{ row }">
+                  <el-tag :type="row.enabled ? 'success' : 'info'" size="small">{{ row.enabled ? '启用' : '停用' }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="sort_order" label="排序" width="70" />
+              <el-table-column label="操作" width="140" fixed="right">
+                <template #default="{ row }">
+                  <el-button link type="primary" @click="openEditGlobal(row)">编辑</el-button>
+                  <el-button link type="danger" @click="onDeleteGlobal(row)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            <div class="pager">
+              <el-pagination
+                v-model:current-page="globalPage"
+                v-model:page-size="globalPageSize"
+                :total="globalTotal"
+                :page-sizes="[10, 20, 50]"
+                layout="total, sizes, prev, pager, next"
+                @current-change="loadGlobal"
+                @size-change="loadGlobal"
+              />
+            </div>
+          </el-card>
+        </el-tab-pane>
+      </el-tabs>
+
+      <!-- 编辑弹窗（个人/全局共用） -->
       <el-dialog
         v-model="dialogVisible"
-        :title="dialogMode === 'create' ? '新建规则' : '编辑规则'"
+        :title="dialogTitle"
         width="560px"
         destroy-on-close
       >
         <el-form ref="formRef" :model="form" :rules="formRules" label-width="90px">
-          <el-form-item label="编码" prop="code">
-            <el-input v-model="form.code" :disabled="dialogMode === 'edit'" placeholder="大写字母/数字/下划线，如 PAYMENT_ABNORMAL" />
+          <el-form-item v-if="dialogKind === 'global-create'" label="编码" prop="code">
+            <el-input v-model="form.code" placeholder="大写字母/数字/下划线，如 PAYMENT_ABNORMAL" />
           </el-form-item>
           <el-form-item label="规则名称" prop="name">
             <el-input v-model="form.name" placeholder="如：付款条款异常" />
@@ -104,14 +156,14 @@
               <el-option v-for="(label, value) in severityMap" :key="value" :label="label" :value="value" />
             </el-select>
           </el-form-item>
-          <el-form-item label="关键词" prop="keywords">
+          <el-form-item label="关键词">
             <el-input v-model="keywordsText" placeholder="多个关键词用逗号分隔，如：付款, 支付, 预付款" />
           </el-form-item>
           <el-form-item label="风险说明" prop="description">
-            <el-input v-model="form.description" type="textarea" :rows="3" placeholder="描述该规则识别什么风险" />
+            <el-input v-model="form.description" type="textarea" :rows="3" />
           </el-form-item>
           <el-form-item label="处置建议" prop="suggestion">
-            <el-input v-model="form.suggestion" type="textarea" :rows="3" placeholder="给出风险处置/修改建议" />
+            <el-input v-model="form.suggestion" type="textarea" :rows="3" />
           </el-form-item>
           <el-form-item label="启用">
             <el-switch v-model="form.enabled" />
@@ -127,10 +179,8 @@
       </el-dialog>
 
       <!-- 导入 Markdown -->
-      <el-dialog v-model="importVisible" title="导入规则（Markdown）" width="640px" destroy-on-close>
-        <div class="import-tip">
-          支持从「导出」生成的 Markdown 文件导入；规则按编码幂等更新。粘贴内容或选择 .md 文件。
-        </div>
+      <el-dialog v-model="importVisible" title="导入全局规则（Markdown）" width="640px" destroy-on-close>
+        <div class="import-tip">支持从「导出」生成的 Markdown 导入；规则按编码幂等更新。粘贴内容或选择 .md 文件。</div>
         <el-input v-model="importContent" type="textarea" :rows="12" placeholder="# 合同风险扫描规则 ..." />
         <div class="import-actions">
           <input ref="fileRef" type="file" accept=".md,.markdown,.txt" style="display: none" @change="onFileChange" />
@@ -146,20 +196,30 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
-import { Download, Plus, Search, Upload } from '@element-plus/icons-vue'
+import { Download, Plus, RefreshLeft, Search, Upload } from '@element-plus/icons-vue'
 import {
   createRiskRule,
+  deleteMyRiskRule,
   deleteRiskRule,
   exportRiskRules,
   importRiskRules,
+  listMyRiskRules,
   listRiskRules,
+  restoreMyRiskRules,
+  updateMyRiskRule,
   updateRiskRule,
   type RiskRulePayload,
 } from '@/api/admin'
 import type { RiskRule } from '@/api/types'
 import AppLayout from '@/components/AppLayout.vue'
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
+const canManageGlobal = computed(
+  () => auth.isSuperAdmin || auth.user?.permissions?.includes('risk:rule:manage') === true,
+)
 
 const categoryMap: Record<string, string> = {
   payment: '付款条款',
@@ -180,20 +240,41 @@ function severityType(severity: string): 'danger' | 'warning' | 'info' {
   return 'info'
 }
 
-const loading = ref(false)
-const exporting = ref(false)
-const saving = ref(false)
-const importing = ref(false)
-const rules = ref<RiskRule[]>([])
-const total = ref(0)
-const page = ref(1)
-const pageSize = ref(20)
-const keyword = ref('')
-const category = ref('')
-const severity = ref('')
+const activeTab = ref('mine')
+
+// 我的规则
+const mineLoading = ref(false)
+const mineRules = ref<RiskRule[]>([])
+const mineKeyword = ref('')
+const mineCategory = ref('')
+const mineSeverity = ref('')
+const filteredMine = computed(() =>
+  mineRules.value.filter((r) => {
+    const kw = mineKeyword.value.trim().toLowerCase()
+    const matchKw = !kw || r.code.toLowerCase().includes(kw) || r.name.toLowerCase().includes(kw)
+    const matchCat = !mineCategory.value || r.category === mineCategory.value
+    const matchSev = !mineSeverity.value || r.severity === mineSeverity.value
+    return matchKw && matchCat && matchSev
+  }),
+)
+
+// 全局模板
+const globalLoading = ref(false)
+const globalRules = ref<RiskRule[]>([])
+const globalTotal = ref(0)
+const globalPage = ref(1)
+const globalPageSize = ref(20)
+const globalKeyword = ref('')
+const globalCategory = ref('')
+const globalSeverity = ref('')
 
 const dialogVisible = ref(false)
-const dialogMode = ref<'create' | 'edit'>('create')
+const dialogKind = ref<'mine' | 'global-create' | 'global-edit'>('mine')
+const dialogTitle = computed(() => {
+  if (dialogKind.value === 'global-create') return '新建全局规则'
+  if (dialogKind.value === 'global-edit') return '编辑全局规则'
+  return '编辑我的规则'
+})
 const formRef = ref<FormInstance>()
 const form = reactive({
   id: 0,
@@ -207,10 +288,13 @@ const form = reactive({
   sort_order: 0,
 })
 const keywordsText = ref('')
+const saving = ref(false)
 
 const importVisible = ref(false)
 const importContent = ref('')
+const importing = ref(false)
 const fileRef = ref<HTMLInputElement>()
+const exporting = ref(false)
 
 const formRules: FormRules = {
   code: [
@@ -224,34 +308,67 @@ const formRules: FormRules = {
   suggestion: [{ required: true, message: '请输入处置建议', trigger: 'blur' }],
 }
 
-onMounted(loadRules)
+onMounted(async () => {
+  await loadMine()
+  if (canManageGlobal.value) await loadGlobal()
+})
 
-async function loadRules() {
-  loading.value = true
+async function loadMine() {
+  mineLoading.value = true
   try {
-    const data = await listRiskRules({
-      page: page.value,
-      page_size: pageSize.value,
-      keyword: keyword.value || undefined,
-      category: category.value || undefined,
-      severity: severity.value || undefined,
-    })
-    rules.value = data.items
-    total.value = data.total
+    mineRules.value = await listMyRiskRules()
   } catch (e) {
     ElMessage.error((e as Error).message)
   } finally {
-    loading.value = false
+    mineLoading.value = false
   }
 }
 
-function onSearch() {
-  page.value = 1
-  void loadRules()
+async function loadGlobal() {
+  if (!canManageGlobal.value) return
+  globalLoading.value = true
+  globalPage.value = Math.max(1, globalPage.value)
+  try {
+    const data = await listRiskRules({
+      page: globalPage.value,
+      page_size: globalPageSize.value,
+      keyword: globalKeyword.value || undefined,
+      category: globalCategory.value || undefined,
+      severity: globalSeverity.value || undefined,
+    })
+    globalRules.value = data.items
+    globalTotal.value = data.total
+  } catch (e) {
+    ElMessage.error((e as Error).message)
+  } finally {
+    globalLoading.value = false
+  }
 }
 
-function openCreate() {
-  dialogMode.value = 'create'
+function fillForm(row: RiskRule) {
+  Object.assign(form, {
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    category: row.category,
+    severity: row.severity,
+    description: row.description,
+    suggestion: row.suggestion,
+    enabled: row.enabled,
+    sort_order: row.sort_order,
+  })
+  keywordsText.value = row.keywords.join(', ')
+}
+
+function openEditMine(row: RiskRule) {
+  dialogKind.value = 'mine'
+  fillForm(row)
+  dialogVisible.value = true
+  void nextTick(() => formRef.value?.clearValidate())
+}
+
+function openCreateGlobal() {
+  dialogKind.value = 'global-create'
   Object.assign(form, {
     id: 0, code: '', name: '', category: 'payment', severity: 'medium',
     description: '', suggestion: '', enabled: true, sort_order: 0,
@@ -261,19 +378,14 @@ function openCreate() {
   void nextTick(() => formRef.value?.clearValidate())
 }
 
-function openEdit(row: RiskRule) {
-  dialogMode.value = 'edit'
-  Object.assign(form, {
-    id: row.id, code: row.code, name: row.name, category: row.category,
-    severity: row.severity, description: row.description, suggestion: row.suggestion,
-    enabled: row.enabled, sort_order: row.sort_order,
-  })
-  keywordsText.value = row.keywords.join(', ')
+function openEditGlobal(row: RiskRule) {
+  dialogKind.value = 'global-edit'
+  fillForm(row)
   dialogVisible.value = true
   void nextTick(() => formRef.value?.clearValidate())
 }
 
-function buildPayload(): RiskRulePayload {
+function buildPayload(withCode: boolean): RiskRulePayload {
   const payload: RiskRulePayload = {
     name: form.name,
     category: form.category,
@@ -284,7 +396,7 @@ function buildPayload(): RiskRulePayload {
     enabled: form.enabled,
     sort_order: form.sort_order,
   }
-  if (dialogMode.value === 'create') payload.code = form.code
+  if (withCode) payload.code = form.code
   return payload
 }
 
@@ -293,15 +405,19 @@ async function submitDialog() {
   if (!valid) return
   saving.value = true
   try {
-    if (dialogMode.value === 'create') {
-      await createRiskRule(buildPayload())
-      ElMessage.success('规则已创建')
+    if (dialogKind.value === 'mine') {
+      await updateMyRiskRule(form.code, buildPayload(false))
+      ElMessage.success('已保存到我的规则')
+    } else if (dialogKind.value === 'global-create') {
+      await createRiskRule(buildPayload(true))
+      ElMessage.success('全局规则已创建')
     } else {
-      await updateRiskRule(form.id, buildPayload())
-      ElMessage.success('规则已更新')
+      await updateRiskRule(form.id, buildPayload(false))
+      ElMessage.success('全局规则已更新')
     }
     dialogVisible.value = false
-    await loadRules()
+    await loadMine()
+    if (canManageGlobal.value) await loadGlobal()
   } catch (e) {
     ElMessage.error((e as Error).message)
   } finally {
@@ -309,9 +425,43 @@ async function submitDialog() {
   }
 }
 
-async function onDelete(row: RiskRule) {
+async function onRestoreOne(row: RiskRule) {
   try {
-    await ElMessageBox.confirm(`确定删除规则「${row.name}」？`, '删除确认', {
+    await ElMessageBox.confirm(`确定将「${row.name}」恢复为全局默认？`, '恢复默认', {
+      type: 'warning', confirmButtonText: '恢复默认', cancelButtonText: '取消',
+    })
+  } catch {
+    return
+  }
+  try {
+    await deleteMyRiskRule(row.code)
+    ElMessage.success('已恢复默认')
+    await loadMine()
+  } catch (e) {
+    ElMessage.error((e as Error).message)
+  }
+}
+
+async function onRestoreAll() {
+  try {
+    await ElMessageBox.confirm('确定恢复为全局默认？你的全部自定义修改将被清除且不可恢复。', '一键恢复默认', {
+      type: 'warning', confirmButtonText: '确认恢复', cancelButtonText: '取消',
+    })
+  } catch {
+    return
+  }
+  try {
+    await restoreMyRiskRules()
+    ElMessage.success('已恢复为全局默认')
+    await loadMine()
+  } catch (e) {
+    ElMessage.error((e as Error).message)
+  }
+}
+
+async function onDeleteGlobal(row: RiskRule) {
+  try {
+    await ElMessageBox.confirm(`确定删除全局规则「${row.name}」？`, '删除确认', {
       type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消',
     })
   } catch {
@@ -319,8 +469,9 @@ async function onDelete(row: RiskRule) {
   }
   try {
     await deleteRiskRule(row.id)
-    ElMessage.success('规则已删除')
-    await loadRules()
+    ElMessage.success('全局规则已删除')
+    await loadGlobal()
+    await loadMine()
   } catch (e) {
     ElMessage.error((e as Error).message)
   }
@@ -353,7 +504,8 @@ async function submitImport() {
     const result = await importRiskRules(importContent.value)
     ElMessage.success(`导入完成：新增 ${result.created}，更新 ${result.updated}，跳过 ${result.skipped}`)
     importVisible.value = false
-    await loadRules()
+    await loadGlobal()
+    await loadMine()
   } catch (e) {
     ElMessage.error((e as Error).message)
   } finally {
@@ -371,19 +523,12 @@ async function onExport() {
     a.download = 'contract-risk-rules.md'
     a.click()
     URL.revokeObjectURL(url)
-    ElMessage.success('规则已导出')
+    ElMessage.success('全局规则已导出')
   } catch (e) {
     ElMessage.error((e as Error).message)
   } finally {
     exporting.value = false
   }
-}
-
-function formatTime(value: string | null): string {
-  if (!value) return '-'
-  const d = new Date(value)
-  if (Number.isNaN(d.getTime())) return '-'
-  return d.toLocaleString('zh-CN', { hour12: false })
 }
 </script>
 
@@ -397,8 +542,6 @@ function formatTime(value: string | null): string {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
 }
 .toolbar-left h3 {
   margin: 0 0 4px;
@@ -409,11 +552,24 @@ function formatTime(value: string | null): string {
   font-size: 12px;
   color: #6b7280;
 }
-.toolbar-right {
+.tab-toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: space-between;
   flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.tab-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.tab-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .pager {
   margin-top: 16px;
@@ -430,5 +586,9 @@ function formatTime(value: string | null): string {
   margin-top: 10px;
   display: flex;
   align-items: center;
+}
+.muted {
+  color: #9ca3af;
+  font-size: 12px;
 }
 </style>

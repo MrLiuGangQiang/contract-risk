@@ -58,7 +58,6 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/RiskRuleView.vue'),
     meta: {
       requiresAuth: true,
-      permission: 'risk:rule:manage',
       title: '风险规则',
     },
   },

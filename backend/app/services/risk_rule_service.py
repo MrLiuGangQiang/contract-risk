@@ -22,9 +22,9 @@ from app.domain.constants import (
     RISK_RULE_SEVERITY_LOW,
     RISK_RULE_SEVERITY_MEDIUM,
 )
-from app.models.risk_rule import RiskRule
+from app.models.risk_rule import RiskRule, RiskRuleCustom
 from app.repositories.logs import OperationLogRepository
-from app.repositories.risk_rule import RiskRuleRepository
+from app.repositories.risk_rule import RiskRuleCustomRepository, RiskRuleRepository
 from app.schemas.risk_rule import (
     RiskRuleCreate,
     RiskRuleImportResult,
@@ -50,8 +50,8 @@ RISK_RULE_SEVERITIES = {
 }
 
 
-def _out(rule: RiskRule) -> RiskRuleOut:
-    """ORM -> DTO。"""
+def _out(rule: RiskRule | RiskRuleCustom, *, source: str = "global") -> RiskRuleOut:
+    """ORM -> DTO（source=global/custom）。"""
     return RiskRuleOut(
         id=rule.id,
         code=rule.code,
@@ -63,6 +63,8 @@ def _out(rule: RiskRule) -> RiskRuleOut:
         suggestion=rule.suggestion,
         enabled=rule.enabled,
         sort_order=rule.sort_order,
+        source=source,
+        is_custom=source == "custom",
         created_at=rule.created_at,
         updated_at=rule.updated_at,
     )
@@ -170,6 +172,7 @@ class RiskRuleService:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
         self._repo = RiskRuleRepository(session)
+        self._custom_repo = RiskRuleCustomRepository(session)
         self._audit_repo = OperationLogRepository(session)
 
     # ==================== 查询 ====================
@@ -252,6 +255,50 @@ class RiskRuleService:
                           {"code": rule.code}, operator_id, request_meta)
         await self._session.commit()
         logger.info("risk rule deleted", extra={"operator_id": operator_id, "rule_id": rule_id})
+
+    # ==================== 个人副本 ====================
+
+    async def list_effective(self, user_id: int) -> list[RiskRuleOut]:
+        """当前用户生效规则：全局模板 + 个人副本（同 code 个人优先）。"""
+        globals_map = {r.code: _out(r, source="global") for r in await self._repo.list_export()}
+        customs = {r.code: _out(r, source="custom") for r in await self._custom_repo.list_by_user(user_id)}
+        # customs 优先：同 code 时个人副本覆盖全局
+        merged = {**globals_map, **customs}
+        return sorted(merged.values(), key=lambda r: (r.sort_order, r.code))
+
+    async def upsert_custom(
+        self, user_id: int, code: str, data: RiskRuleUpdate
+    ) -> RiskRuleOut:
+        """保存当前用户个人副本（首次从全局快照复制，之后仅改本人）。"""
+        if await self._repo.get_by_code(code) is None:
+            raise BizException(10001, "Not Found", http_status=404)
+        custom = await self._custom_repo.get_by_user_code(user_id, code)
+        if custom is None:
+            custom = RiskRuleCustom(user_id=user_id, code=code)
+            self._session.add(custom)
+        custom.name = data.name
+        custom.category = data.category
+        custom.severity = data.severity
+        custom.keywords = data.keywords
+        custom.description = data.description
+        custom.suggestion = data.suggestion
+        custom.enabled = data.enabled
+        custom.sort_order = data.sort_order
+        await self._session.flush()
+        await self._session.refresh(custom)
+        out = _out(custom, source="custom")
+        await self._session.commit()
+        return out
+
+    async def delete_custom(self, user_id: int, code: str) -> None:
+        """恢复单条默认：删除该用户对应个人副本。"""
+        await self._custom_repo.delete_by_user_code(user_id, code)
+        await self._session.commit()
+
+    async def restore_default(self, user_id: int) -> None:
+        """一键恢复默认：删除当前用户全部个人副本。"""
+        await self._custom_repo.delete_all_by_user(user_id)
+        await self._session.commit()
 
     # ==================== 导入导出 ====================
 

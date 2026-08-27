@@ -84,7 +84,16 @@
 | GET | `/api/v1/admin/risk-rules/export` | `risk:rule:manage` | 导出 Markdown 附件（`text/markdown`） |
 | POST | `/api/v1/admin/risk-rules/import` | `risk:rule:manage` | 导入 Markdown；body：`{content}`；返回 `{created,updated,skipped}` |
 
-> 规则 Markdown 格式见《10-合同风险规则配置设计》第 3 节；写操作写入操作审计。
+> 规则 Markdown 格式见《10-合同风险规则配置设计》；写操作写入操作审计；`risk:rule:manage` 由超管+管理员持有。
+
+### 2.6 个人风险规则（auth，所有登录用户）
+
+| 方法 | 路径 | 权限 | 说明 |
+| --- | --- | --- | --- |
+| GET | `/api/v1/risk-rules` | 登录 | 当前用户生效规则（全局+个人副本，个人优先） |
+| PUT | `/api/v1/risk-rules/me/{code}` | 登录 | 保存个人副本 |
+| DELETE | `/api/v1/risk-rules/me/{code}` | 登录 | 恢复单条默认 |
+| POST | `/api/v1/risk-rules/me/restore-default` | 登录 | 一键恢复默认（前端确认） |
 
 ### 2.4 用户与角色管理（admin，超管专属）
 

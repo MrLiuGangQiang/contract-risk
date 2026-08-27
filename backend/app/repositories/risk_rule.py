@@ -2,10 +2,10 @@
 
 Repository 只做数据访问，业务规则与事务由 Service 控制。
 """
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.risk_rule import RiskRule
+from app.models.risk_rule import RiskRule, RiskRuleCustom
 
 
 class RiskRuleRepository:
@@ -76,3 +76,47 @@ class RiskRuleRepository:
         await self._session.flush()
         return rule
 
+
+
+class RiskRuleCustomRepository:
+    """个人风险规则副本 Repository。"""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def list_by_user(self, user_id: int) -> list[RiskRuleCustom]:
+        """查询用户全部个人副本。"""
+        stmt = select(RiskRuleCustom).where(RiskRuleCustom.user_id == user_id).order_by(
+            RiskRuleCustom.sort_order, RiskRuleCustom.id
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_by_user_code(self, user_id: int, code: str) -> RiskRuleCustom | None:
+        """按用户+编码查询个人副本。"""
+        stmt = select(RiskRuleCustom).where(
+            RiskRuleCustom.user_id == user_id, RiskRuleCustom.code == code
+        )
+        return (await self._session.execute(stmt)).scalar_one_or_none()
+
+    async def add(self, entity: RiskRuleCustom) -> RiskRuleCustom:
+        """新增个人副本。"""
+        self._session.add(entity)
+        await self._session.flush()
+        return entity
+
+    async def delete_by_user_code(self, user_id: int, code: str) -> None:
+        """删除单条个人副本（恢复单条默认）。"""
+        await self._session.execute(
+            delete(RiskRuleCustom).where(
+                RiskRuleCustom.user_id == user_id, RiskRuleCustom.code == code
+            )
+        )
+        await self._session.flush()
+
+    async def delete_all_by_user(self, user_id: int) -> None:
+        """删除用户全部个人副本（一键恢复默认）。"""
+        await self._session.execute(
+            delete(RiskRuleCustom).where(RiskRuleCustom.user_id == user_id)
+        )
+        await self._session.flush()

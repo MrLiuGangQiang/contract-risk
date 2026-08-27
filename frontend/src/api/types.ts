@@ -62,6 +62,8 @@ export interface RiskRule {
   suggestion: string
   enabled: boolean
   sort_order: number
+  source: 'global' | 'custom'
+  is_custom: boolean
   created_at: string | null
   updated_at: string | null
 }
