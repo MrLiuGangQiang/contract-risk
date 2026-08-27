@@ -101,7 +101,10 @@
             </el-button>
           </el-form>
           <div v-if="dingtalkEnabled" class="switch-row">
-            <a class="switch-link" @click="onSwitchToDingtalk">← 返回钉钉登录</a>
+            <button class="switch-pill" type="button" @click="onSwitchToDingtalk">
+              <ArrowLeft class="switch-pill-icon" />
+              返回钉钉登录
+            </button>
           </div>
         </template>
       </div>
@@ -114,7 +117,7 @@
 import { nextTick, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
-import { Document, Lock, RefreshRight, Search, User } from '@element-plus/icons-vue'
+import { ArrowLeft, Document, Lock, RefreshRight, Search, User } from '@element-plus/icons-vue'
 import {
   dingtalkCallback,
   getDingtalkAuthorizeUrl,
