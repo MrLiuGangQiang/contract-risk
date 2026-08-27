@@ -26,6 +26,18 @@ PERM_CONFIG_DINGTALK_READ = "config:dingtalk:read"
 PERM_CONFIG_DINGTALK_WRITE = "config:dingtalk:write"
 PERM_CONFIG_DINGTALK_TEST = "config:dingtalk:test"
 PERM_ADMIN_USER_MANAGE = "user:manage"
+PERM_RISK_RULE_MANAGE = "risk:rule:manage"
+
+# ==================== 风险规则分类/级别 ====================
+RISK_RULE_CATEGORY_PAYMENT = "payment"
+RISK_RULE_CATEGORY_BREACH = "breach"
+RISK_RULE_CATEGORY_SUBJECT = "subject"
+RISK_RULE_CATEGORY_IP = "ip"
+RISK_RULE_CATEGORY_DISPUTE = "dispute"
+RISK_RULE_CATEGORY_OTHER = "other"
+RISK_RULE_SEVERITY_HIGH = "high"
+RISK_RULE_SEVERITY_MEDIUM = "medium"
+RISK_RULE_SEVERITY_LOW = "low"
 
 # ==================== 系统配置键 ====================
 CONFIG_KEY_DINGTALK = "dingtalk"

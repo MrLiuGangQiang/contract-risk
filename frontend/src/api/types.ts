@@ -51,6 +51,34 @@ export interface LoginMethods {
   dingtalk_enabled: boolean
 }
 
+export interface RiskRule {
+  id: number
+  code: string
+  name: string
+  category: string
+  severity: string
+  keywords: string[]
+  description: string
+  suggestion: string
+  enabled: boolean
+  sort_order: number
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface RiskRulePage {
+  items: RiskRule[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface RiskRuleImportResult {
+  created: number
+  updated: number
+  skipped: number
+}
+
 export interface Role {
   id: number
   code: string

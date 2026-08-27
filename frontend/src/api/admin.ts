@@ -2,7 +2,7 @@
  * 超管配置中心接口（《05-API设计规范》第 2.3 节）。
  */
 import client from './client'
-import type { AdminUser, AdminUserPage, DingTalkConfig, DingTalkTestResult, Role } from './types'
+import type { AdminUser, AdminUserPage, DingTalkConfig, DingTalkTestResult, RiskRule, RiskRuleImportResult, RiskRulePage, Role } from './types'
 
 export interface DingTalkConfigPayload {
   client_id: string
@@ -110,6 +110,85 @@ export async function deleteUser(userId: number): Promise<void> {
   try {
     const resp = await client.delete(`/admin/users/${userId}`)
     if (resp.data.code !== 0) throw new Error(resp.data.message)
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+
+// ==================== 风险规则（《10》第 4 节）====================
+
+export interface RiskRulePayload {
+  code?: string
+  name: string
+  category: string
+  severity: string
+  keywords: string[]
+  description: string
+  suggestion: string
+  enabled: boolean
+  sort_order: number
+}
+
+export async function listRiskRules(params: {
+  page?: number
+  page_size?: number
+  keyword?: string
+  category?: string
+  severity?: string
+  enabled?: boolean
+}): Promise<RiskRulePage> {
+  try {
+    const resp = await client.get('/admin/risk-rules', { params })
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+    return resp.data.data
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+
+export async function createRiskRule(payload: RiskRulePayload): Promise<RiskRule> {
+  try {
+    const resp = await client.post('/admin/risk-rules', payload)
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+    return resp.data.data
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+
+export async function updateRiskRule(ruleId: number, payload: RiskRulePayload): Promise<RiskRule> {
+  try {
+    const resp = await client.put(`/admin/risk-rules/${ruleId}`, payload)
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+    return resp.data.data
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+
+export async function deleteRiskRule(ruleId: number): Promise<void> {
+  try {
+    const resp = await client.delete(`/admin/risk-rules/${ruleId}`)
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+
+export async function importRiskRules(content: string): Promise<RiskRuleImportResult> {
+  try {
+    const resp = await client.post('/admin/risk-rules/import', { content })
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+    return resp.data.data
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+
+export async function exportRiskRules(): Promise<Blob> {
+  try {
+    const resp = await client.get('/admin/risk-rules/export', { responseType: 'blob' })
+    return resp.data as Blob
   } catch (e) {
     throw new Error(errorMessage(e))
   }

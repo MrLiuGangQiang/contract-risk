@@ -24,9 +24,11 @@ from app.schemas.admin import (
     DingTalkConfigIn,
 )
 from app.services.admin_service import AdminService
+from app.api.v1.admin.risk_rules import router as risk_rules_router
 from app.services.admin_user_service import AdminUserService
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+router.include_router(risk_rules_router)
 
 
 @router.get("/configs/dingtalk")

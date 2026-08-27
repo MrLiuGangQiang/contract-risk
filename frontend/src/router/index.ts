@@ -52,6 +52,16 @@ const routes: RouteRecordRaw[] = [
       title: '用户与角色',
     },
   },
+  {
+    path: '/admin/risk-rules',
+    name: 'risk-rules',
+    component: () => import('@/views/RiskRuleView.vue'),
+    meta: {
+      requiresAuth: true,
+      permission: 'risk:rule:manage',
+      title: '风险规则',
+    },
+  },
 ]
 
 const router = createRouter({

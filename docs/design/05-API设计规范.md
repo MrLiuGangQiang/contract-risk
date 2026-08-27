@@ -73,6 +73,19 @@
 
 > 权限说明：上述钉钉配置接口属于敏感管理接口，对非超管统一返回 404（Not Found，code=10001），与不存在路由响应一致；已认证超管无需该权限也可访问。
 
+### 2.5 风险规则管理（admin，超管专属）
+
+| 方法 | 路径 | 权限 | 说明 |
+| --- | --- | --- | --- |
+| GET | `/api/v1/admin/risk-rules` | `risk:rule:manage` | 规则分页列表；query：page/page_size/keyword/category/severity/enabled |
+| POST | `/api/v1/admin/risk-rules` | `risk:rule:manage` | 新建规则；body：`{code,name,category,severity,keywords,description,suggestion,enabled,sort_order}` |
+| PUT | `/api/v1/admin/risk-rules/{id}` | `risk:rule:manage` | 更新规则（code 不可改） |
+| DELETE | `/api/v1/admin/risk-rules/{id}` | `risk:rule:manage` | 软删除规则 |
+| GET | `/api/v1/admin/risk-rules/export` | `risk:rule:manage` | 导出 Markdown 附件（`text/markdown`） |
+| POST | `/api/v1/admin/risk-rules/import` | `risk:rule:manage` | 导入 Markdown；body：`{content}`；返回 `{created,updated,skipped}` |
+
+> 规则 Markdown 格式见《10-合同风险规则配置设计》第 3 节；写操作写入操作审计。
+
 ### 2.4 用户与角色管理（admin，超管专属）
 
 | 方法 | 路径 | 权限 | 说明 |

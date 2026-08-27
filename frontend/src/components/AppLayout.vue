@@ -24,6 +24,10 @@
           <el-icon><user-filled /></el-icon>
           <span>用户与角色</span>
         </el-menu-item>
+        <el-menu-item v-if="auth.isSuperAdmin || auth.user?.permissions?.includes('risk:rule:manage')" index="/admin/risk-rules">
+          <el-icon><warning /></el-icon>
+          <span>风险规则</span>
+        </el-menu-item>
       </el-menu>
       <div class="sidebar-footer">v0.1.0</div>
     </aside>
@@ -69,6 +73,7 @@ import {
   HomeFilled,
   Setting,
   UserFilled,
+  Warning,
 } from '@element-plus/icons-vue'
 import { logout as apiLogout } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'

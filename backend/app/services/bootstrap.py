@@ -21,6 +21,7 @@ from app.domain.constants import (
     PERM_CONFIG_DINGTALK_TEST,
     PERM_CONFIG_DINGTALK_WRITE,
     PERM_ADMIN_USER_MANAGE,
+    PERM_RISK_RULE_MANAGE,
     ROLE_ADMIN,
     ROLE_SUPER_ADMIN,
     ROLE_USER,
@@ -39,6 +40,7 @@ SEED_PERMISSIONS = [
     (PERM_CONFIG_DINGTALK_WRITE, "保存钉钉配置", "admin"),
     (PERM_CONFIG_DINGTALK_TEST, "测试钉钉配置", "admin"),
     (PERM_ADMIN_USER_MANAGE, "用户与角色管理", "admin"),
+    (PERM_RISK_RULE_MANAGE, "风险规则管理", "risk"),
 ]
 
 # 角色 → 权限编码
