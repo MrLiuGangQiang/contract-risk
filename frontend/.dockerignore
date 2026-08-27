@@ -1,0 +1,9 @@
+# 构建上下文排除项（构建产物在镜像内重新生成）
+node_modules/
+dist/
+shots/
+.env
+.env.*
+!.env.example
+*.local
+*.log

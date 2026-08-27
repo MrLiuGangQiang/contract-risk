@@ -1,0 +1,93 @@
+# 本地/单机部署编排（PostgreSQL + Redis + 后端 + 前端），对应《09》第 8 节与 docs/ops/部署指南.md。
+# 用法：docker compose --env-file backend/.env up -d
+name: contract-risk
+
+# 后端与迁移服务共用环境变量（YAML 锚点，避免重复）
+x-backend-env: &backend-env
+  APP_ENV: prod
+  APP_HOST: 0.0.0.0
+  APP_PORT: "8000"
+  DEBUG: "false"
+  ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD:?请设置初始超管密码}
+  JWT_SECRET: ${JWT_SECRET:?请设置 JWT_SECRET}
+  FERNET_KEY: ${FERNET_KEY:?请设置 FERNET_KEY}
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: ${POSTGRES_DB:-contract_risk}
+  POSTGRES_USER: ${POSTGRES_USER:-app_user}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请设置数据库密码}
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  REDIS_DB: ${REDIS_DB:-0}
+  REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+  DINGTALK_CLIENT_ID: ${DINGTALK_CLIENT_ID:-}
+  DINGTALK_CLIENT_SECRET: ${DINGTALK_CLIENT_SECRET:-}
+  DINGTALK_REDIRECT_URI: ${DINGTALK_REDIRECT_URI:-}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-contract_risk}
+      POSTGRES_USER: ${POSTGRES_USER:-app_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请设置数据库密码}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app_user} -d ${POSTGRES_DB:-contract_risk}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    # 本地默认无密码；生产建议通过 command 覆盖启用 requirepass 或使用托管 Redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: registry.cn-hangzhou.aliyuncs.com/liugangqiang/contract-risk:backend
+    command: ["alembic", "upgrade", "head"]
+    environment: *backend-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: registry.cn-hangzhou.aliyuncs.com/liugangqiang/contract-risk:backend
+    environment: *backend-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: registry.cn-hangzhou.aliyuncs.com/liugangqiang/contract-risk:frontend
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    restart: unless-stopped
+
+volumes:
+  pgdata:

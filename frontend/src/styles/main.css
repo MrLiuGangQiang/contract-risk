@@ -1,0 +1,90 @@
+/* ============================================================
+ * 全局主题样式（品牌设计规范）
+ * 主色：#2563EB（企业蓝）  辅助色：#0F172A（深海军蓝）
+ * 圆角：12px（卡片）/ 8px（控件）  阴影：柔和分层
+ * ============================================================ */
+
+:root {
+  /* Element Plus 主题覆盖 */
+  --el-color-primary: #2563eb;
+  --el-color-primary-light-3: #4f83f0;
+  --el-color-primary-light-5: #79a1f4;
+  --el-color-primary-light-7: #a8c0f8;
+  --el-color-primary-light-8: #c1d2fa;
+  --el-color-primary-light-9: #e8eefd;
+  --el-color-primary-dark-2: #1e4fc0;
+  --el-border-radius-base: 8px;
+  --el-border-radius-small: 6px;
+
+  /* 品牌变量 */
+  --brand-primary: #2563eb;
+  --brand-primary-hover: #1d4ed8;
+  --brand-navy: #0f172a;
+  --brand-navy-light: #1e293b;
+  --bg-page: #f4f6fb;
+  --card-radius: 12px;
+  --card-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.06);
+  --card-shadow-hover: 0 4px 12px rgba(15, 23, 42, 0.08), 0 12px 32px rgba(15, 23, 42, 0.1);
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family:
+    'PingFang SC', 'HarmonyOS Sans SC', 'Microsoft YaHei', 'Helvetica Neue',
+    Arial, sans-serif;
+  background: var(--bg-page);
+  color: #1f2937;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 通用品牌卡片 */
+.brand-card {
+  border: none;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+}
+
+/* 页面标题 */
+.page-header {
+  margin-bottom: 20px;
+}
+.page-header .title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
+}
+.page-header .subtitle {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* 渐变品牌背景（登录页/横幅） */
+.brand-gradient {
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #3b82f6 100%);
+}
+
+/* 表单说明文字 */
+.form-tip {
+  font-size: 12px;
+  color: #9ca3af;
+  line-height: 1.6;
+}
+
+/* Element Plus 细节微调 */
+.el-card {
+  --el-card-border-radius: var(--card-radius);
+}
+.el-button {
+  font-weight: 500;
+}
+.el-menu {
+  border-right: none;
+}

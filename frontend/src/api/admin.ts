@@ -1,0 +1,127 @@
+/**
+ * 超管配置中心接口（《05-API设计规范》第 2.3 节）。
+ */
+import client from './client'
+import type { AdminUser, AdminUserPage, DingTalkConfig, DingTalkTestResult, Role } from './types'
+
+export interface DingTalkConfigPayload {
+  client_id: string
+  client_secret: string
+  corp_id: string
+  redirect_uri: string
+  enabled: boolean
+}
+
+function errorMessage(e: unknown): string {
+  const err = e as { response?: { data?: { message?: string } }; message?: string }
+  return err.response?.data?.message ?? err.message ?? '请求失败，请稍后再试'
+}
+
+export async function getDingtalkConfig(): Promise<DingTalkConfig> {
+  try {
+    const resp = await client.get('/admin/configs/dingtalk')
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+    return resp.data.data
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+
+export async function updateDingtalkConfig(
+  payload: DingTalkConfigPayload,
+): Promise<DingTalkConfig> {
+  try {
+    const resp = await client.put('/admin/configs/dingtalk', payload)
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+    return resp.data.data
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+
+export async function testDingtalkConfig(): Promise<DingTalkTestResult> {
+  try {
+    const resp = await client.post('/admin/configs/dingtalk/test')
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+    return resp.data.data
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+// ==================== 用户与角色管理（《05-API设计规范》 2.4 节） ====================
+
+export interface AdminUserCreatePayload {
+  username: string
+  display_name: string
+  password: string
+  roles: string[]
+}
+
+export interface AdminUserUpdatePayload {
+  display_name: string
+  status: number
+  roles: string[]
+}
+
+export async function listUsers(params: {
+  page?: number
+  page_size?: number
+  keyword?: string
+}): Promise<AdminUserPage> {
+  try {
+    const resp = await client.get('/admin/users', { params })
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+    return resp.data.data
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+
+export async function createUser(payload: AdminUserCreatePayload): Promise<AdminUser> {
+  try {
+    const resp = await client.post('/admin/users', payload)
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+    return resp.data.data
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+
+export async function updateUser(userId: number, payload: AdminUserUpdatePayload): Promise<AdminUser> {
+  try {
+    const resp = await client.put(`/admin/users/${userId}`, payload)
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+    return resp.data.data
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+
+export async function resetUserPassword(userId: number, password: string): Promise<void> {
+  try {
+    const resp = await client.put(`/admin/users/${userId}/password`, { password })
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+
+export async function deleteUser(userId: number): Promise<void> {
+  try {
+    const resp = await client.delete(`/admin/users/${userId}`)
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+
+export async function listRoles(): Promise<Role[]> {
+  try {
+    const resp = await client.get('/admin/roles')
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+    return resp.data.data
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+
