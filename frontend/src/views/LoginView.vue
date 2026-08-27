@@ -1,12 +1,20 @@
 <template>
   <div class="login-page">
+    <header class="brand-head">
+      <div class="brand-row">
+        <ContractIcon :size="26" color="#2563eb" class="brand-icon" />
+        <h1>合同风险扫描系统</h1>
+      </div>
+      <p class="brand-slogan">智能识别合同风险 · 守护企业权益</p>
+    </header>
+
     <div class="login-card" v-loading="loadingMethods">
       <!-- 钉钉扫码登录（默认内嵌官方二维码，不自动跳转） -->
       <template v-if="mode === 'dingtalk'">
         <div class="card-head center">
           <DingTalkIcon :size="56" class="dingtalk-icon" />
           <h2>钉钉扫码登录</h2>
-          <p>打开钉钉 App 扫一扫即可登录</p>
+          <p>使用企业钉钉账号扫码登录</p>
         </div>
 
         <div class="qr-area" v-loading="dingtalkLoading">
@@ -79,6 +87,7 @@ import {
   login,
 } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
+import ContractIcon from '@/components/ContractIcon.vue'
 import DingTalkIcon from '@/components/DingTalkIcon.vue'
 import DingtalkQrLogin from '@/components/DingtalkQrLogin.vue'
 
@@ -219,6 +228,33 @@ async function onLogin() {
   padding: 24px;
   background: linear-gradient(135deg, #eef4ff 0%, #f8fafc 55%, #f1f5f9 100%);
   color: #0f172a;
+}
+
+/* ===== 顶部品牌区（说明系统用途） ===== */
+.brand-head {
+  text-align: center;
+  margin-bottom: 28px;
+}
+.brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.brand-row h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.brand-slogan {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #64748b;
+  letter-spacing: 1px;
+}
+.brand-icon {
+  flex-shrink: 0;
 }
 
 /* ===== 登录卡片（浅色简洁，无边框） ===== */
