@@ -8,7 +8,7 @@ import axios, {
 } from 'axios'
 import router from '@/router'
 import { useAuthStore } from '@/stores/auth'
-import type { ApiResponse } from './types'
+import type { ApiResponse, TokenData } from './types'
 
 /** 认证类错误码：未认证/令牌过期/无效（触发刷新重放） */
 const AUTH_ERROR_CODES = [30000, 30001, 30002]
@@ -33,12 +33,13 @@ type RetriableConfig = InternalAxiosRequestConfig & { _retried?: boolean }
 /** 使用裸 axios 刷新令牌（避免拦截器递归），返回新 access token 或 null */
 async function refreshAccessToken(): Promise<string | null> {
   try {
-    const resp = await axios.post<ApiResponse<{ access_token: string }>>(
+    const resp = await axios.post<ApiResponse<TokenData>>(
       '/api/v1/auth/refresh',
       {},
       { withCredentials: true },
     )
     if (resp.data.code === 0 && resp.data.data) {
+      useAuthStore().setTokens(resp.data.data)
       return resp.data.data.access_token
     }
     return null

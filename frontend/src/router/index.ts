@@ -59,11 +59,15 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const auth = useAuthStore()
   if (to.meta.public) return true
+  // 页面刷新/重启：先用 refresh Cookie 静默恢复，避免强制重新登录
   if (!auth.isAuthenticated) {
-    return { name: 'login', query: { redirect: to.fullPath } }
+    const restored = await auth.restoreSession()
+    if (!restored) {
+      return { name: 'login', query: { redirect: to.fullPath } }
+    }
   }
   if (auth.mustChangePassword && !to.meta.allowMustChange) {
     return { name: 'change-password' }
