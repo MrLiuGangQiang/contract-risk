@@ -106,3 +106,37 @@ class AdminUserPageOut(BaseModel):
     total: int = 0
     page: int = 1
     page_size: int = 20
+
+
+# ==================== AI 配置 DTO（《11》第 2.2 节） ====================
+
+class AIConfigIn(BaseModel):
+    """保存 AI 配置请求（api_key 留空表示不修改，已加密存储）。"""
+
+    enabled: bool = False
+    api_base: str = Field(min_length=1, max_length=256)
+    api_key: str = Field(default="", max_length=512)
+    model: str = Field(min_length=1, max_length=128)
+    timeout_seconds: int = Field(default=30, ge=5, le=300)
+    context_chars: int = Field(default=30000, ge=1000, le=200000)
+    max_findings: int = Field(default=50, ge=1, le=100)
+
+
+class AIConfigOut(BaseModel):
+    """AI 配置响应（api_key 已脱敏）。"""
+
+    enabled: bool = False
+    api_base: str = ""
+    api_key_masked: str = "***"
+    model: str = ""
+    timeout_seconds: int = 30
+    context_chars: int = 30000
+    max_findings: int = 50
+    updated_at: datetime | None = None
+
+
+class AITestResult(BaseModel):
+    """AI 配置连通性测试结果。"""
+
+    ok: bool = False
+    detail: str = ""

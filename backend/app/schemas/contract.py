@@ -13,6 +13,7 @@ class ContractRiskOut(BaseModel):
     category: str
     severity: str
     matched_keywords: list[str] = Field(default_factory=list)
+    risk_source: str = "rule"
     snippet: str
     description: str
     suggestion: str

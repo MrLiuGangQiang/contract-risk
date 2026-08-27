@@ -86,6 +86,9 @@
                 <el-tag :type="severityType(risk.severity)" size="small">
                   {{ severityMap[risk.severity] ?? risk.severity }}
                 </el-tag>
+                <el-tag :type="risk.risk_source === 'ai' ? 'primary' : 'info'" size="small" effect="plain">
+                  {{ risk.risk_source === 'ai' ? 'AI' : '规则' }}
+                </el-tag>
                 <span class="risk-name">{{ risk.rule_name }}</span>
                 <span class="risk-code">{{ risk.rule_code }}</span>
               </div>

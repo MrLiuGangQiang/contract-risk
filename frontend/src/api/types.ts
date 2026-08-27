@@ -108,3 +108,20 @@ export interface AdminUserPage {
   page: number
   page_size: number
 }
+
+
+export interface AIConfig {
+  enabled: boolean
+  api_base: string
+  api_key_masked: string
+  model: string
+  timeout_seconds: number
+  context_chars: number
+  max_findings: number
+  updated_at: string | null
+}
+
+export interface AITestResult {
+  ok: boolean
+  detail: string
+}

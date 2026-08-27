@@ -2,7 +2,7 @@
  * 超管配置中心接口（《05-API设计规范》第 2.3 节）。
  */
 import client from './client'
-import type { AdminUser, AdminUserPage, DingTalkConfig, DingTalkTestResult, RiskRule, RiskRuleImportResult, RiskRulePage, Role } from './types'
+import type { AdminUser, AdminUserPage, AIConfig, AITestResult, DingTalkConfig, DingTalkTestResult, RiskRule, RiskRuleImportResult, RiskRulePage, Role } from './types'
 
 export interface DingTalkConfigPayload {
   client_id: string
@@ -244,3 +244,46 @@ export async function listRoles(): Promise<Role[]> {
   }
 }
 
+
+
+// ==================== AI 配置（《11》第 2.2 节）====================
+
+export interface AIConfigPayload {
+  enabled: boolean
+  api_base: string
+  api_key: string
+  model: string
+  timeout_seconds: number
+  context_chars: number
+  max_findings: number
+}
+
+export async function getAIConfig(): Promise<AIConfig> {
+  try {
+    const resp = await client.get('/admin/configs/ai')
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+    return resp.data.data
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+
+export async function updateAIConfig(payload: AIConfigPayload): Promise<AIConfig> {
+  try {
+    const resp = await client.put('/admin/configs/ai', payload)
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+    return resp.data.data
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+
+export async function testAIConfig(): Promise<AITestResult> {
+  try {
+    const resp = await client.post('/admin/configs/ai/test')
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+    return resp.data.data
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}

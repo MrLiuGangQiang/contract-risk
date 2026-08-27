@@ -5,6 +5,7 @@ export interface ContractRisk {
   category: string
   severity: string
   matched_keywords: string[]
+  risk_source: 'rule' | 'ai'
   snippet: string
   description: string
   suggestion: string

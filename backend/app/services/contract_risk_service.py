@@ -5,9 +5,12 @@
 """
 import asyncio
 import io
+import json
 import logging
 import re
 import uuid
+
+import httpx
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -28,7 +31,12 @@ from app.models.contract import Contract, ContractRisk
 from app.repositories.contract import ContractRepository
 from app.repositories.logs import OperationLogRepository
 from app.schemas.contract import ContractDetailOut, ContractOut, ContractPageOut, ContractRiskOut
-from app.services.risk_rule_service import RiskRuleService
+from app.services.ai_config_service import AIConfigService
+from app.services.risk_rule_service import (
+    RISK_RULE_CATEGORIES,
+    RISK_RULE_SEVERITIES,
+    RiskRuleService,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +110,7 @@ def _scan_text(text: str, rules: list[Any]) -> list[dict[str, Any]]:
                     "description": rule.description,
                     "suggestion": rule.suggestion,
                     "sort_order": rule.sort_order,
+                    "risk_source": "rule",
                 }
             )
     hits.sort(key=lambda h: (_SEVERITY_ORDER.get(h["severity"], 9), h["sort_order"], h["rule_code"]))
@@ -121,6 +130,7 @@ def _risk_out(risk: ContractRisk) -> ContractRiskOut:
         description=risk.description,
         suggestion=risk.suggestion,
         sort_order=risk.sort_order,
+        risk_source=risk.risk_source or "rule",
         created_at=risk.created_at,
     )
 
@@ -143,13 +153,70 @@ def _contract_out(contract: Contract) -> ContractOut:
     )
 
 
+def _parse_ai_json(content: str) -> list[dict[str, Any]]:
+    """Extract a JSON array from an AI response (best effort)."""
+    start = content.find("[")
+    end = content.rfind("]")
+    if start == -1 or end == -1 or end <= start:
+        return []
+    try:
+        data = json.loads(content[start : end + 1])
+    except ValueError:
+        return []
+    if not isinstance(data, list):
+        return []
+    findings: list[dict[str, Any]] = []
+    for i, item in enumerate(data[:100]):
+        if not isinstance(item, dict):
+            continue
+        category = str(item.get("category") or "general")
+        severity = str(item.get("severity") or "medium")
+        if category not in RISK_RULE_CATEGORIES:
+            category = "general"
+        if severity not in RISK_RULE_SEVERITIES:
+            severity = "medium"
+        code = str(item.get("rule_code") or "").strip() or f"AI_FINDING_{i + 1}"
+        findings.append(
+            {
+                "rule_code": code[:64],
+                "rule_name": str(item.get("rule_name") or f"AI Finding {i + 1}")[:128],
+                "category": category,
+                "severity": severity,
+                "matched_keywords": [str(k) for k in (item.get("matched_keywords") or []) if str(k)][:20],
+                "snippet": str(item.get("snippet") or "")[: _SNIPPET_RADIUS * 4],
+                "description": str(item.get("description") or "")[:2000],
+                "suggestion": str(item.get("suggestion") or "")[:2000],
+                "sort_order": 10000 + i,
+                "risk_source": "ai",
+            }
+        )
+    return findings
+
+
+def _merge_hits(rule_hits: list[dict[str, Any]], ai_hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Merge rule hits and AI findings; keep rule hit when same rule_code."""
+    by_code = {h["rule_code"]: h for h in rule_hits}
+    merged = list(rule_hits)
+    for hit in ai_hits:
+        if hit["rule_code"] in by_code:
+            continue
+        by_code[hit["rule_code"]] = hit
+        merged.append(hit)
+    merged.sort(
+        key=lambda h: (_SEVERITY_ORDER.get(h["severity"], 9), h["sort_order"], h["rule_code"])
+    )
+    return merged
+
+
 class ContractRiskService:
+
     """合同风险识别业务用例。"""
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
         self._repo = ContractRepository(session)
         self._risk_rule_service = RiskRuleService(session)
+        self._ai_config_service = AIConfigService(session)
         self._audit_repo = OperationLogRepository(session)
 
     async def upload(
@@ -166,7 +233,9 @@ class ContractRiskService:
 
         text = await asyncio.to_thread(_parse_document, ext, content)
         rules = await self._risk_rule_service.list_effective(user_id)
-        hits = _scan_text(text, rules)
+        hits = _merge_hits(
+            _scan_text(text, rules), await self._analyze_with_ai(text, rules)
+        )
 
         settings = get_settings()
         upload_path = Path(settings.upload_dir)
@@ -226,7 +295,10 @@ class ContractRiskService:
         """重新扫描：用当前生效规则替换风险结果。"""
         contract = await self._get_or_404(user_id, contract_id)
         rules = await self._risk_rule_service.list_effective(user_id)
-        hits = _scan_text(contract.text_content, rules)
+        hits = _merge_hits(
+            _scan_text(contract.text_content, rules),
+            await self._analyze_with_ai(contract.text_content, rules),
+        )
         risks = await self._save_risks(contract, user_id, hits)
         await self._update_contract_counts(contract, hits)
         await self._audit(
@@ -250,7 +322,53 @@ class ContractRiskService:
 
     # ==================== 私有 ====================
 
+    async def _analyze_with_ai(self, text: str, rules: list[Any]) -> list[dict[str, Any]]:
+        """AI enhanced analysis via OpenAI-compatible API. Falls back to empty on any failure."""
+        cfg = await self._ai_config_service.get_plain()
+        enabled = bool(cfg.get("enabled", False))
+        api_key = str(cfg.get("api_key_enc", "") or "")
+        api_base = str(cfg.get("api_base", "") or "")
+        model = str(cfg.get("model", "") or "")
+        if not enabled or not api_key or not api_base or not model:
+            return []
+        enabled_rules = [r for r in rules if r.enabled]
+        rule_summary = "\n".join(
+            f"- {r.code} | {r.name} | {r.category} | {r.severity} | {r.description[:120]} | {r.suggestion[:120]}"
+            for r in enabled_rules[:100]
+        )
+        system = (
+            "You are a contract risk analyzer. Use the given rules to find risks in the contract. "
+            "Return ONLY a JSON array. Each item: "
+            '{"rule_code":"existing rule code or AI_FINDING_n","rule_name":"title",'
+            '"category":"project|technology|contract|general","severity":"high|medium|low",'
+            '"matched_keywords":["keyword"],"snippet":"context around finding",'
+            '"description":"risk","suggestion":"advice"}. If no risk, return [].'
+        )
+        user_content = f"RULES:\n{rule_summary or 'No rules.'}\n\nCONTRACT:\n{text[: int(cfg.get('context_chars', 30000))]}"
+        url = f"{api_base.rstrip('/')}/chat/completions"
+        try:
+            async with httpx.AsyncClient(timeout=int(cfg.get('timeout_seconds', 30))) as client:
+                resp = await client.post(
+                    url,
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    json={
+                        "model": model,
+                        "messages": [
+                            {"role": "system", "content": system},
+                            {"role": "user", "content": user_content},
+                        ],
+                        "temperature": 0,
+                    },
+                )
+                resp.raise_for_status()
+                content = resp.json()["choices"][0]["message"]["content"]
+                return _parse_ai_json(content)[: int(cfg.get('max_findings', 50))]
+        except Exception as exc:
+            logger.warning("AI risk analysis failed, fallback to rules: %s", exc)
+            return []
+
     async def _save_risks(self, contract: Contract, user_id: int, hits: list[dict[str, Any]]) -> list[ContractRisk]:
+
         """写入风险结果并返回实体列表（不提交）。"""
         risks = [
             ContractRisk(
@@ -265,6 +383,7 @@ class ContractRiskService:
                 description=h["description"],
                 suggestion=h["suggestion"],
                 sort_order=h["sort_order"],
+                risk_source=h.get("risk_source", "rule"),
             )
             for h in hits
         ]

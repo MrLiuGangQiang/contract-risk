@@ -52,6 +52,16 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/admin/config/ai',
+    name: 'ai-config',
+    component: () => import('@/views/AIConfigView.vue'),
+    meta: {
+      requiresAuth: true,
+      permission: 'config:ai:read',
+      title: 'AI 配置',
+    },
+  },
+  {
     path: '/admin/users',
     name: 'admin-users',
     component: () => import('@/views/AdminUserView.vue'),

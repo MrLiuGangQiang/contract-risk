@@ -12,12 +12,16 @@ from app.core.database import get_db
 from app.core.response import ApiResponse
 from app.domain.constants import (
     PERM_ADMIN_USER_MANAGE,
+    PERM_CONFIG_AI_READ,
+    PERM_CONFIG_AI_TEST,
+    PERM_CONFIG_AI_WRITE,
     PERM_CONFIG_DINGTALK_READ,
     PERM_CONFIG_DINGTALK_TEST,
     PERM_CONFIG_DINGTALK_WRITE,
 )
 from app.models.user import User
 from app.schemas.admin import (
+    AIConfigIn,
     AdminUserCreate,
     AdminUserResetPassword,
     AdminUserUpdate,
@@ -70,6 +74,46 @@ async def test_dingtalk_config(
         request_meta=get_request_meta(request),
     )
     return ApiResponse.ok(request, data=data.model_dump(mode="json"))
+# ==================== AI 配置（《11》第 2.2 节，仅超管）====================
+
+@router.get("/configs/ai")
+async def get_ai_config(
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_permission(PERM_CONFIG_AI_READ, hidden=True)),
+) -> dict[str, Any]:
+    """Read AI config (masked)."""
+    data = await AdminService(session).get_ai_config()
+    return ApiResponse.ok(request, data=data.model_dump(mode="json"))
+
+
+@router.put("/configs/ai")
+async def update_ai_config(
+    payload: AIConfigIn,
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    user: User = Depends(require_permission(PERM_CONFIG_AI_WRITE, hidden=True)),
+) -> dict[str, Any]:
+    """Save AI config."""
+    data = await AdminService(session).update_ai_config(
+        payload, operator_id=user.id, request_meta=get_request_meta(request)
+    )
+    return ApiResponse.ok(request, data=data.model_dump(mode="json"))
+
+
+@router.post("/configs/ai/test")
+async def test_ai_config(
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    user: User = Depends(require_permission(PERM_CONFIG_AI_TEST, hidden=True)),
+) -> dict[str, Any]:
+    """Test AI config connectivity."""
+    data = await AdminService(session).test_ai_config(
+        operator_id=user.id, request_meta=get_request_meta(request)
+    )
+    return ApiResponse.ok(request, data=data.model_dump(mode="json"))
+
+
 # ==================== 用户与角色管理（《05-API设计规范》 2.4 节，非超管统一 404 隐藏） ====================
 
 @router.get("/users")

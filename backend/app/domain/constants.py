@@ -27,6 +27,9 @@ PERM_CONFIG_DINGTALK_WRITE = "config:dingtalk:write"
 PERM_CONFIG_DINGTALK_TEST = "config:dingtalk:test"
 PERM_ADMIN_USER_MANAGE = "user:manage"
 PERM_RISK_RULE_MANAGE = "risk:rule:manage"
+PERM_CONFIG_AI_READ = "config:ai:read"
+PERM_CONFIG_AI_WRITE = "config:ai:write"
+PERM_CONFIG_AI_TEST = "config:ai:test"
 
 # ==================== 风险规则分类/级别 ====================
 RISK_RULE_CATEGORY_PAYMENT = "payment"
@@ -46,6 +49,7 @@ RISK_RULE_CATEGORY_GENERAL = "general"
 
 # ==================== 系统配置键 ====================
 CONFIG_KEY_DINGTALK = "dingtalk"
+CONFIG_KEY_AI = "ai"
 
 # ==================== 合同风险识别 ====================
 CONTRACT_STATUS_DONE = 1

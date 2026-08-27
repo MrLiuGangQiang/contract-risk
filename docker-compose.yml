@@ -21,6 +21,14 @@ x-app-env: &app-env
   DB_POOL_PRE_PING: ${DB_POOL_PRE_PING:-true}
   DB_ECHO: ${DB_ECHO:-false}
   REDIS_MAX_CONNECTIONS: ${REDIS_MAX_CONNECTIONS:-50}
+  # AI 增强识别（可选）
+  AI_ENABLED: ${AI_ENABLED:-false}
+  AI_API_BASE: ${AI_API_BASE:-https://api.openai.com/v1}
+  AI_API_KEY: ${AI_API_KEY:-}
+  AI_MODEL: ${AI_MODEL:-gpt-4o-mini}
+  AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-30}
+  AI_CONTEXT_CHARS: ${AI_CONTEXT_CHARS:-30000}
+  AI_MAX_FINDINGS: ${AI_MAX_FINDINGS:-50}
 
 services:
   postgres:

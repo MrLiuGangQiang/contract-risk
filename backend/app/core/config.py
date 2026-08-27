@@ -24,7 +24,16 @@ class Settings(BaseSettings):
     app_port: int = 8000
     debug: bool = True
     cors_origins: str = "http://localhost:5173"
-    upload_dir: str = "data/contracts"  # 逗号分隔的前端域名白名单
+    upload_dir: str = "data/contracts"
+
+    # ===== AI 增强识别（OpenAI 兼容接口，默认关闭；见《11》第 2.2 节）=====
+    ai_enabled: bool = False
+    ai_api_base: str = "https://api.openai.com/v1"
+    ai_api_key: str = ""
+    ai_model: str = "gpt-4o-mini"
+    ai_timeout_seconds: int = 30
+    ai_context_chars: int = 30000
+    ai_max_findings: int = 50  # 逗号分隔的前端域名白名单
 
     # ===== 初始超管（首次启动幂等创建；该初始密码仅用于首次登录，登录后强制改密）=====
     admin_username: str = "admin"

@@ -60,6 +60,7 @@ class ContractRisk(TimestampMixin, Base):
     category: Mapped[str] = mapped_column(String(32), nullable=False)
     severity: Mapped[str] = mapped_column(String(16), nullable=False)
     matched_keywords: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    risk_source: Mapped[str] = mapped_column(String(16), nullable=False, default="rule", server_default="rule")
     snippet: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     suggestion: Mapped[str] = mapped_column(Text, nullable=False)
