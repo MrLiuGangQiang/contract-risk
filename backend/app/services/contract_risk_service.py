@@ -13,7 +13,7 @@ import uuid
 import httpx
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 from pypdf import PdfReader
 from docx import Document
@@ -220,9 +220,19 @@ class ContractRiskService:
         self._audit_repo = OperationLogRepository(session)
 
     async def upload(
-        self, *, user_id: int, file_name: str, content: bytes, request_meta: dict[str, Any]
+        self,
+        *,
+        user_id: int,
+        file_name: str,
+        content: bytes,
+        request_meta: dict[str, Any],
+        progress_cb: Callable[[int, str], Awaitable[None]] | None = None,
     ) -> ContractDetailOut:
-        """上传并同步扫描合同。"""
+        """上传并同步扫描合同（progress_cb 用于任务进度展示）。"""
+
+        async def notify(progress: int, stage: str) -> None:
+            if progress_cb is not None:
+                await progress_cb(progress, stage)
         ext = file_name.rsplit(".", 1)[-1].lower() if "." in file_name else ""
         if ext not in CONTRACT_ALLOWED_EXTENSIONS:
             raise BizException(20002, "仅支持 txt/pdf/docx 文件")
@@ -231,11 +241,13 @@ class ContractRiskService:
         if len(content) > CONTRACT_MAX_SIZE:
             raise BizException(20002, "文件不能超过 20MB")
 
+        await notify(20, "正在提取合同文本")
         text = await asyncio.to_thread(_parse_document, ext, content)
+        await notify(45, "正在执行规则匹配")
         rules = await self._risk_rule_service.list_effective(user_id)
-        hits = _merge_hits(
-            _scan_text(text, rules), await self._analyze_with_ai(text, rules)
-        )
+        hits = _scan_text(text, rules)
+        await notify(70, "AI 正在分析风险")
+        hits = _merge_hits(hits, await self._analyze_with_ai(text, rules))
 
         settings = get_settings()
         upload_path = Path(settings.upload_dir)
@@ -257,8 +269,10 @@ class ContractRiskService:
             updated_by=user_id,
         )
         await self._repo.add_contract(contract)
+        await notify(90, "正在生成风险结果")
         risks = await self._save_risks(contract, user_id, hits)
         await self._update_contract_counts(contract, hits)
+        await notify(100, "扫描完成")
 
         await self._audit(
             "contract.upload", "POST", "/api/v1/contracts/upload",
@@ -291,16 +305,32 @@ class ContractRiskService:
         risks = await self._repo.list_risks(contract.id)
         return ContractDetailOut(contract=_contract_out(contract), risks=[_risk_out(r) for r in risks])
 
-    async def rescan(self, *, user_id: int, contract_id: int, request_meta: dict[str, Any]) -> ContractDetailOut:
+    async def rescan(
+        self,
+        *,
+        user_id: int,
+        contract_id: int,
+        request_meta: dict[str, Any],
+        progress_cb: Callable[[int, str], Awaitable[None]] | None = None,
+    ) -> ContractDetailOut:
         """重新扫描：用当前生效规则替换风险结果。"""
+
+        async def notify(progress: int, stage: str) -> None:
+            if progress_cb is not None:
+                await progress_cb(progress, stage)
         contract = await self._get_or_404(user_id, contract_id)
+        await notify(20, "正在读取合同内容")
         rules = await self._risk_rule_service.list_effective(user_id)
+        await notify(50, "正在执行规则匹配")
+        hits = _scan_text(contract.text_content, rules)
+        await notify(70, "AI 正在分析风险")
         hits = _merge_hits(
-            _scan_text(contract.text_content, rules),
-            await self._analyze_with_ai(contract.text_content, rules),
+            hits, await self._analyze_with_ai(contract.text_content, rules)
         )
+        await notify(90, "正在生成风险结果")
         risks = await self._save_risks(contract, user_id, hits)
         await self._update_contract_counts(contract, hits)
+        await notify(100, "扫描完成")
         await self._audit(
             "contract.rescan", "POST", f"/api/v1/contracts/{contract_id}/rescan",
             {"risk_count": len(hits)}, user_id, request_meta,

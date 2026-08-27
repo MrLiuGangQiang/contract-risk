@@ -39,3 +39,17 @@ export interface ContractDetail {
   contract: Contract
   risks: ContractRisk[]
 }
+
+export type ContractJobStatus = 'running' | 'done' | 'failed'
+
+export interface ContractJob {
+  job_id?: string
+  status: ContractJobStatus
+  progress: number
+  stage: string
+  stage_message: string
+  contract_id?: number
+  risk_count?: number
+  user_id?: number
+  error?: string
+}

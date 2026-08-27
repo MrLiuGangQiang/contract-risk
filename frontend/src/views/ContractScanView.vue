@@ -4,14 +4,14 @@
       <el-card shadow="never">
         <div class="page-head">
           <h3>合同风险识别</h3>
-          <span class="page-desc">上传合同，自动提取文本并按当前有效规则识别风险</span>
+          <span class="page-desc">上传合同，自动提取文本并按「规则 + AI」识别风险</span>
         </div>
         <div class="upload-row">
           <input ref="fileRef" type="file" accept=".txt,.pdf,.docx" style="display: none" @change="onFileChange" />
           <el-button type="primary" :icon="Upload" :loading="uploading" @click="fileRef?.click()">
             选择合同文件（txt / pdf / docx）
           </el-button>
-          <span class="upload-tip">单文件 ≤ 20MB；扫描使用你的生效规则（全局 + 个人副本）</span>
+          <span class="upload-tip">单文件 ≤ 20MB；任务后台执行，可实时查看进度</span>
         </div>
       </el-card>
 
@@ -107,6 +107,26 @@
           <el-button type="warning" :loading="rescanning" @click="onRescanCurrent">重新扫描</el-button>
         </template>
       </el-dialog>
+
+      <!-- 扫描进度（大模型思维式展示） -->
+      <el-dialog v-model="scanVisible" title="合同风险识别中" width="620px" :close-on-click-modal="false" @closed="stopPolling" @open="startPollingState">
+        <div class="scan-body">
+          <div class="scan-stage">
+            <span class="scan-stage-text">{{ scanJob?.stage_message || '正在启动任务...' }}</span>
+            <span class="scan-dots">
+              <i></i><i></i><i></i>
+            </span>
+          </div>
+          <el-progress :percentage="scanJob?.progress ?? 0" :stroke-width="10" :show-text="false" />
+          <div class="scan-steps">
+            <div v-for="step in steps" :key="step.progress" class="scan-step" :class="{ active: (scanJob?.progress ?? 0) >= step.progress }">
+              <span class="scan-step-icon">{{ (scanJob?.progress ?? 0) >= step.progress ? '✓' : '·' }}</span>
+              <span>{{ step.label }}</span>
+            </div>
+          </div>
+          <div v-if="scanJob?.status === 'failed'" class="scan-error">{{ scanJob.error || scanJob.stage_message }}</div>
+        </div>
+      </el-dialog>
     </div>
   </AppLayout>
 </template>
@@ -118,11 +138,12 @@ import { Refresh, Search, Upload } from '@element-plus/icons-vue'
 import {
   deleteContract,
   getContract,
+  getContractJob,
   listContracts,
-  rescanContract,
-  uploadContract,
+  startContractRescan,
+  startContractUpload,
 } from '@/api/contract'
-import type { Contract, ContractDetail, ContractRisk } from '@/api/contractTypes'
+import type { Contract, ContractDetail, ContractJob, ContractRisk } from '@/api/contractTypes'
 import AppLayout from '@/components/AppLayout.vue'
 
 const categoryMap: Record<string, string> = {
@@ -142,6 +163,13 @@ function severityType(severity: string): 'danger' | 'warning' | 'info' {
   return 'info'
 }
 
+const steps = [
+  { progress: 20, label: '提取合同文本' },
+  { progress: 45, label: '规则匹配' },
+  { progress: 70, label: 'AI 深度分析' },
+  { progress: 90, label: '生成风险结果' },
+]
+
 const loading = ref(false)
 const items = ref<Contract[]>([])
 const total = ref(0)
@@ -158,6 +186,10 @@ const detailLoading = ref(false)
 const detail = ref<ContractDetail | null>(null)
 const rescanning = ref(false)
 const currentDetailId = ref(0)
+
+const scanVisible = ref(false)
+const scanJob = ref<ContractJob | null>(null)
+let polling = false
 
 const groupedRisks = computed<Record<string, ContractRisk[]>>(() => {
   const groups: Record<string, ContractRisk[]> = {}
@@ -209,17 +241,54 @@ async function onFileChange(event: Event) {
   }
   uploading.value = true
   try {
-    const result = await uploadContract(file)
-    ElMessage.success(`扫描完成，识别到 ${result.risks.length} 项风险`)
-    detail.value = result
-    currentDetailId.value = result.contract.id
-    detailVisible.value = true
-    await loadList()
+    const jobId = await startContractUpload(file)
+    await pollJob(jobId)
   } catch (e) {
     ElMessage.error((e as Error).message)
   } finally {
     uploading.value = false
   }
+}
+
+async function pollJob(jobId: string) {
+  scanVisible.value = true
+  scanJob.value = { status: 'running', progress: 0, stage: 'created', stage_message: '任务已创建' }
+  polling = true
+  while (polling) {
+    try {
+      const job = await getContractJob(jobId)
+      scanJob.value = job
+      if (job.status === 'done') {
+        polling = false
+        scanVisible.value = false
+        await new Promise((r) => setTimeout(r, 300))
+        if (job.contract_id) {
+          await openDetail(job.contract_id)
+        }
+        ElMessage.success(`扫描完成，识别到 ${job.risk_count ?? 0} 项风险`)
+        await loadList()
+        return
+      }
+      if (job.status === 'failed') {
+        polling = false
+        ElMessage.error(job.error || job.stage_message || '扫描失败')
+        return
+      }
+    } catch (e) {
+      polling = false
+      ElMessage.error((e as Error).message)
+      return
+    }
+    await new Promise((r) => setTimeout(r, 800))
+  }
+}
+
+function startPollingState() {
+  scanJob.value = { status: 'running', progress: 0, stage: 'created', stage_message: '任务已创建' }
+}
+
+function stopPolling() {
+  polling = false
 }
 
 async function openDetail(id: number) {
@@ -238,12 +307,8 @@ async function openDetail(id: number) {
 async function onRescan(row: Contract) {
   rescanning.value = true
   try {
-    const result = await rescanContract(row.id)
-    ElMessage.success(`重新扫描完成，识别到 ${result.risks.length} 项风险`)
-    detail.value = result
-    currentDetailId.value = row.id
-    detailVisible.value = true
-    await loadList()
+    const jobId = await startContractRescan(row.id)
+    await pollJob(jobId)
   } catch (e) {
     ElMessage.error((e as Error).message)
   } finally {
@@ -255,10 +320,8 @@ async function onRescanCurrent() {
   if (!currentDetailId.value) return
   rescanning.value = true
   try {
-    const result = await rescanContract(currentDetailId.value)
-    detail.value = result
-    ElMessage.success('已更新风险结果')
-    await loadList()
+    const jobId = await startContractRescan(currentDetailId.value)
+    await pollJob(jobId)
   } catch (e) {
     ElMessage.error((e as Error).message)
   } finally {
@@ -419,5 +482,68 @@ function formatTime(value: string | null): string {
   margin-top: 6px;
   font-size: 13px;
   color: #b45309;
+}
+.scan-body {
+  padding: 4px 8px 8px;
+}
+.scan-stage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e40af;
+}
+.scan-dots {
+  display: inline-flex;
+  gap: 4px;
+}
+.scan-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #2563eb;
+  animation: blink 1s infinite;
+}
+.scan-dots i:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.scan-dots i:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes blink {
+  0%, 80%, 100% { opacity: 0.2; }
+  40% { opacity: 1; }
+}
+.scan-steps {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.scan-step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #94a3b8;
+  font-size: 12px;
+}
+.scan-step.active {
+  background: rgba(37, 99, 235, 0.08);
+  color: #2563eb;
+  font-weight: 600;
+}
+.scan-step-icon {
+  font-weight: 700;
+}
+.scan-error {
+  margin-top: 12px;
+  color: #dc2626;
+  font-size: 13px;
+  white-space: pre-wrap;
 }
 </style>

@@ -64,6 +64,7 @@ REDIS_DINGTALK_STATE_PREFIX = "oauth:dingtalk:state:"
 REDIS_RATELIMIT_LOGIN_PREFIX = "ratelimit:login:"
 REDIS_RATELIMIT_LOGIN_FAIL_PREFIX = "ratelimit:login_fail:"
 REDIS_CONFIG_CACHE_PREFIX = "cache:config:"
+REDIS_CONTRACT_JOB_PREFIX = "job:contract_scan:"
 
 # ==================== 限流参数 ====================
 LOGIN_RATE_LIMIT_PER_MINUTE = 10

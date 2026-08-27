@@ -1,6 +1,6 @@
 """合同风险识别路由（《11-合同风险识别核心功能设计》第 5 节）。
 
-所有登录用户可访问，仅操作本人合同；非本人返回 404 隐藏。
+上传/重扫为异步任务：先返回 job_id，前端轮询 /contracts/jobs/{job_id} 查看进度。
 """
 from typing import Any
 
@@ -12,6 +12,7 @@ from app.core.database import get_db
 from app.core.response import ApiResponse
 from app.models.user import User
 from app.services.contract_risk_service import ContractRiskService
+from app.services.contract_scan_job_service import ContractScanJobService
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
 
@@ -23,15 +24,23 @@ async def upload_contract(
     user: User = Depends(get_current_user),
     file: UploadFile = File(...),
 ) -> dict[str, Any]:
-    """上传合同并同步扫描（txt/pdf/docx，≤20MB）。"""
+    """上传合同（异步任务），立即返回 job_id。"""
     content = await file.read()
-    data = await ContractRiskService(session).upload(
-        user_id=user.id,
-        file_name=file.filename or "untitled.txt",
-        content=content,
-        request_meta=get_request_meta(request),
+    job_id = await ContractScanJobService().start_upload(
+        user_id=user.id, file_name=file.filename or "untitled.txt", content=content
     )
-    return ApiResponse.ok(request, data=data.model_dump(mode="json"))
+    return ApiResponse.ok(request, data={"job_id": job_id})
+
+
+@router.get("/jobs/{job_id}")
+async def get_scan_job(
+    job_id: str,
+    request: Request,
+    _: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """查看扫描任务进度（前端轮询）。"""
+    data = await ContractScanJobService().get_status(job_id)
+    return ApiResponse.ok(request, data=data)
 
 
 @router.get("")
@@ -67,14 +76,13 @@ async def get_contract(
 async def rescan_contract(
     contract_id: int,
     request: Request,
-    session: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """重新扫描合同。"""
-    data = await ContractRiskService(session).rescan(
-        user_id=user.id, contract_id=contract_id, request_meta=get_request_meta(request)
+    """重新扫描（异步任务），立即返回 job_id。"""
+    job_id = await ContractScanJobService().start_rescan(
+        user_id=user.id, contract_id=contract_id
     )
-    return ApiResponse.ok(request, data=data.model_dump(mode="json"))
+    return ApiResponse.ok(request, data={"job_id": job_id})
 
 
 @router.delete("/{contract_id}")
