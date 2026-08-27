@@ -1,9 +1,9 @@
-# 本地/单机部署编排（PostgreSQL + Redis + 后端 + 前端），对应《09》第 8 节与 docs/ops/部署指南.md。
+# 本地/单机部署编排（PostgreSQL + Redis + 一体化应用镜像），对应《09》第 8 节与 docs/ops/部署指南.md。
 # 用法：docker compose --env-file backend/.env up -d
 name: contract-risk
 
-# 后端与迁移服务共用环境变量（YAML 锚点，避免重复）
-x-backend-env: &backend-env
+# 应用与迁移服务共用环境变量（YAML 锚点，避免重复）
+x-app-env: &app-env
   APP_ENV: prod
   APP_HOST: 0.0.0.0
   APP_PORT: "8000"
@@ -51,22 +51,22 @@ services:
 
   migrate:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
-    image: registry.cn-hangzhou.aliyuncs.com/liugangqiang/contract-risk:backend
+    image: registry.cn-hangzhou.aliyuncs.com/liugangqiang/contract-risk:latest
     command: ["alembic", "upgrade", "head"]
-    environment: *backend-env
+    environment: *app-env
     depends_on:
       postgres:
         condition: service_healthy
     restart: "no"
 
-  backend:
+  app:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
-    image: registry.cn-hangzhou.aliyuncs.com/liugangqiang/contract-risk:backend
-    environment: *backend-env
+    image: registry.cn-hangzhou.aliyuncs.com/liugangqiang/contract-risk:latest
+    environment: *app-env
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -75,18 +75,12 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "8000:8000"
-    restart: unless-stopped
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    image: registry.cn-hangzhou.aliyuncs.com/liugangqiang/contract-risk:frontend
-    depends_on:
-      - backend
-    ports:
       - "80:80"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1/api/v1/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
 volumes:

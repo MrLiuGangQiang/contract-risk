@@ -1,0 +1,34 @@
+# 构建上下文排除项（一体化镜像只需前后端源码与部署配置）
+.git
+.github
+.gitignore
+AGENTS.md
+docs/
+scripts/
+环境信息.txt
+
+# 后端本地环境与测试
+backend/.env
+backend/.env.*
+backend/.venv/
+backend/venv/
+backend/__pycache__/
+backend/*.py[cod]
+backend/.pytest_cache/
+backend/tests/
+
+# 前端本地依赖与构建产物
+frontend/node_modules/
+frontend/dist/
+frontend/shots/
+frontend/.env
+frontend/.env.*
+frontend/*.local
+frontend/*.log
+
+# 日志与临时文件
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
