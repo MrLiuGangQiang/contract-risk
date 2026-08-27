@@ -68,9 +68,12 @@
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
-            <el-button link type="warning" @click="openReset(row)">重置密码</el-button>
-            <el-button link type="danger" @click="onDelete(row)">删除</el-button>
+            <template v-if="auth.isSuperAdmin || !row.is_super_admin">
+              <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
+              <el-button link type="warning" @click="openReset(row)">重置密码</el-button>
+              <el-button link type="danger" @click="onDelete(row)">删除</el-button>
+            </template>
+            <span v-else class="muted">仅超管</span>
           </template>
         </el-table-column>
       </el-table>
@@ -113,7 +116,12 @@
         </el-form-item>
         <el-form-item label="角色" prop="roles">
           <el-checkbox-group v-model="dialogForm.roles">
-            <el-checkbox v-for="r in roles" :key="r.code" :value="r.code">{{ r.name }}</el-checkbox>
+            <el-checkbox
+              v-for="r in roles"
+              :key="r.code"
+              :value="r.code"
+              v-show="r.code !== 'super_admin' || auth.isSuperAdmin"
+            >{{ r.name }}</el-checkbox>
           </el-checkbox-group>
         </el-form-item>
       </el-form>
@@ -159,7 +167,9 @@ import {
   updateUser,
 } from '@/api/admin'
 import type { AdminUser, Role } from '@/api/types'
+import { useAuthStore } from '@/stores/auth'
 
+const auth = useAuthStore()
 const loading = ref(false)
 const users = ref<AdminUser[]>([])
 const total = ref(0)

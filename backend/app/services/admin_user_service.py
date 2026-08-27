@@ -63,12 +63,16 @@ class AdminUserService:
         data: AdminUserCreate,
         *,
         operator_id: int,
+        operator_is_super_admin: bool,
         request_meta: dict[str, Any],
     ) -> AdminUserOut:
         """新建用户：验证用户名唯一、角色合法、密码策略，建户后强制首次改密。"""
         if await self._user_repo.get_by_username(data.username) is not None:
             raise BizException(20001, "用户名已存在")
         roles = await self._validate_roles(data.roles)
+        # 管理员可设置用户/管理员，但不可设置超管
+        if not operator_is_super_admin and ROLE_SUPER_ADMIN in data.roles:
+            raise BizException(40000, "仅超管可分配超管角色")
         user = User(
             username=data.username,
             password_hash=hash_password(data.password),
@@ -98,6 +102,7 @@ class AdminUserService:
         data: AdminUserUpdate,
         *,
         operator_id: int,
+        operator_is_super_admin: bool,
         request_meta: dict[str, Any],
     ) -> AdminUserOut:
         """更新用户信息与角色分配；禁止禁用自己、移除最后一个超管。"""
@@ -110,6 +115,11 @@ class AdminUserService:
         target_codes = set(data.roles)
         was_super = user.is_super_admin or ROLE_SUPER_ADMIN in current_codes
         will_be_super = ROLE_SUPER_ADMIN in target_codes and data.status == USER_STATUS_ACTIVE
+        # 管理员不能管理超管账号，也不能把任何人设置为超管
+        if not operator_is_super_admin and was_super:
+            raise BizException(40000, "仅超管可管理超管账号")
+        if not operator_is_super_admin and ROLE_SUPER_ADMIN in target_codes:
+            raise BizException(40000, "仅超管可分配超管角色")
         if was_super and not will_be_super:
             if await self._count_active_superadmins(exclude_user_id=user_id) == 0:
                 raise BizException(40000, "不能移除最后一个启用中的超管")
@@ -139,10 +149,13 @@ class AdminUserService:
         data: AdminUserResetPassword,
         *,
         operator_id: int,
+        operator_is_super_admin: bool,
         request_meta: dict[str, Any],
     ) -> None:
         """重置密码：重置后强制改密并吊销旧会话。"""
         user = await self._get_user_or_404(user_id)
+        if not operator_is_super_admin and user.is_super_admin:
+            raise BizException(40000, "仅超管可重置超管账号密码")
         user.password_hash = hash_password(data.password)
         user.must_change_password = True
         user.updated_by = operator_id
@@ -164,6 +177,7 @@ class AdminUserService:
         user_id: int,
         *,
         operator_id: int,
+        operator_is_super_admin: bool,
         request_meta: dict[str, Any],
     ) -> None:
         """软删除用户；禁止删除自己与最后一个超管。"""
@@ -172,6 +186,8 @@ class AdminUserService:
             raise BizException(40000, "不允许删除自己")
         roles = await self._user_repo.get_user_roles(user_id)
         codes = {r.code for r in roles}
+        if not operator_is_super_admin and (user.is_super_admin or ROLE_SUPER_ADMIN in codes):
+            raise BizException(40000, "仅超管可删除超管账号")
         if user.is_super_admin or ROLE_SUPER_ADMIN in codes:
             if await self._count_active_superadmins(exclude_user_id=user_id) == 0:
                 raise BizException(40000, "不能删除最后一个启用中的超管")

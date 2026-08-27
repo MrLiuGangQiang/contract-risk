@@ -93,7 +93,7 @@ async def create_user(
 ) -> dict[str, Any]:
     """新建用户并分配角色；创建后强制首次改密。"""
     data = await AdminUserService(session).create_user(
-        payload, operator_id=user.id, request_meta=get_request_meta(request)
+        payload, operator_id=user.id, operator_is_super_admin=user.is_super_admin, request_meta=get_request_meta(request)
     )
     return ApiResponse.ok(request, data=data.model_dump(mode="json"))
 
@@ -108,7 +108,7 @@ async def update_user(
 ) -> dict[str, Any]:
     """更新用户信息与角色分配。"""
     data = await AdminUserService(session).update_user(
-        user_id, payload, operator_id=user.id, request_meta=get_request_meta(request)
+        user_id, payload, operator_id=user.id, operator_is_super_admin=user.is_super_admin, request_meta=get_request_meta(request)
     )
     return ApiResponse.ok(request, data=data.model_dump(mode="json"))
 
@@ -123,7 +123,7 @@ async def reset_user_password(
 ) -> dict[str, Any]:
     """重置用户密码；重置后下次登录强制改密。"""
     await AdminUserService(session).reset_password(
-        user_id, payload, operator_id=user.id, request_meta=get_request_meta(request)
+        user_id, payload, operator_id=user.id, operator_is_super_admin=user.is_super_admin, request_meta=get_request_meta(request)
     )
     return ApiResponse.ok(request, data=None, message="密码已重置")
 
@@ -137,7 +137,7 @@ async def delete_user(
 ) -> dict[str, Any]:
     """软删除用户并吊销其会话。"""
     await AdminUserService(session).delete_user(
-        user_id, operator_id=user.id, request_meta=get_request_meta(request)
+        user_id, operator_id=user.id, operator_is_super_admin=user.is_super_admin, request_meta=get_request_meta(request)
     )
     return ApiResponse.ok(request, data=None, message="用户已删除")
 
