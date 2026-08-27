@@ -1,77 +1,97 @@
 <template>
   <div class="login-page">
-    <header class="brand-head">
-      <div class="brand-row">
-        <ContractIcon :size="26" color="#2563eb" class="brand-icon" />
-        <h1>合同风险扫描系统</h1>
+    <!-- 左侧品牌区（浅色，说明系统用途） -->
+    <section class="brand-panel">
+      <div class="brand-inner">
+        <div class="brand-logo">
+          <ContractIcon :size="34" color="#fff" />
+        </div>
+        <h1 class="brand-title">合同风险扫描系统</h1>
+        <p class="brand-slogan">智能识别合同风险 · 守护企业权益</p>
+        <ul class="brand-features">
+          <li>
+            <span class="feature-dot" />
+            <span>钉钉企业身份一键登录</span>
+          </li>
+          <li>
+            <span class="feature-dot" />
+            <span>合同上传解析 · 风险智能扫描</span>
+          </li>
+          <li>
+            <span class="feature-dot" />
+            <span>企业级安全 · 全程审计留痕</span>
+          </li>
+        </ul>
       </div>
-      <p class="brand-slogan">智能识别合同风险 · 守护企业权益</p>
-    </header>
+    </section>
 
-    <div class="login-card" v-loading="loadingMethods">
-      <!-- 钉钉扫码登录（默认内嵌官方二维码，不自动跳转） -->
-      <template v-if="mode === 'dingtalk'">
-        <div class="card-head center">
-          <DingTalkIcon :size="56" class="dingtalk-icon" />
-          <h2>钉钉扫码登录</h2>
-          <p>使用企业钉钉账号扫码登录</p>
-        </div>
+    <!-- 右侧登录区（浅色卡片，无边框） -->
+    <section class="form-panel">
+      <div class="login-card" v-loading="loadingMethods">
+        <!-- 钉钉扫码登录（默认内嵌官方二维码，不自动跳转） -->
+        <template v-if="mode === 'dingtalk'">
+          <div class="card-head center">
+            <DingTalkIcon :size="56" class="dingtalk-icon" />
+            <h2>钉钉扫码登录</h2>
+            <p>使用企业钉钉账号扫码登录</p>
+          </div>
 
-        <div class="qr-area" v-loading="dingtalkLoading">
-          <template v-if="qrError">
-            <p class="qr-error">{{ qrError }}</p>
-            <el-button size="small" :icon="RefreshRight" @click="onRetryQr">重新加载</el-button>
-          </template>
-          <DingtalkQrLogin
-            v-else-if="authorizeUrl"
-            :key="qrKey"
-            :authorize-url="authorizeUrl"
-            @success="onDingtalkSuccess"
-            @error="onDingtalkError"
-          />
-        </div>
-
-        <div class="switch-row">
-          <a class="switch-link" @click="onSwitchToLocal">超管登录 →</a>
-        </div>
-      </template>
-
-      <!-- 超管本地登录 -->
-      <template v-else>
-        <div class="card-head">
-          <h2>超管登录</h2>
-          <p>使用管理员账号登录系统</p>
-        </div>
-        <el-form
-          ref="formRef"
-          :model="form"
-          :rules="rules"
-          label-position="top"
-          size="large"
-          @keyup.enter="onLogin"
-        >
-          <el-form-item label="用户名" prop="username">
-            <el-input v-model="form.username" placeholder="请输入用户名" :prefix-icon="User" clearable />
-          </el-form-item>
-          <el-form-item label="密码" prop="password">
-            <el-input
-              v-model="form.password"
-              type="password"
-              placeholder="请输入密码"
-              :prefix-icon="Lock"
-              show-password
+          <div class="qr-area" v-loading="dingtalkLoading">
+            <template v-if="qrError">
+              <p class="qr-error">{{ qrError }}</p>
+              <el-button size="small" :icon="RefreshRight" @click="onRetryQr">重新加载</el-button>
+            </template>
+            <DingtalkQrLogin
+              v-else-if="authorizeUrl"
+              :key="qrKey"
+              :authorize-url="authorizeUrl"
+              @success="onDingtalkSuccess"
+              @error="onDingtalkError"
             />
-          </el-form-item>
-          <el-button type="primary" class="login-btn" size="large" :loading="loading" @click="onLogin">
-            登 录
-          </el-button>
-        </el-form>
-        <div v-if="dingtalkEnabled" class="switch-row">
-          <a class="switch-link" @click="onSwitchToDingtalk">← 返回钉钉登录</a>
-        </div>
-      </template>
-    </div>
-    <div class="login-footer">&copy; 2026 合同风险扫描系统 · 企业版 v0.1.0</div>
+          </div>
+
+          <div class="switch-row">
+            <a class="switch-link" @click="onSwitchToLocal">超管登录 →</a>
+          </div>
+        </template>
+
+        <!-- 超管本地登录 -->
+        <template v-else>
+          <div class="card-head">
+            <h2>超管登录</h2>
+            <p>使用管理员账号登录系统</p>
+          </div>
+          <el-form
+            ref="formRef"
+            :model="form"
+            :rules="rules"
+            label-position="top"
+            size="large"
+            @keyup.enter="onLogin"
+          >
+            <el-form-item label="用户名" prop="username">
+              <el-input v-model="form.username" placeholder="请输入用户名" :prefix-icon="User" clearable />
+            </el-form-item>
+            <el-form-item label="密码" prop="password">
+              <el-input
+                v-model="form.password"
+                type="password"
+                placeholder="请输入密码"
+                :prefix-icon="Lock"
+                show-password
+              />
+            </el-form-item>
+            <el-button type="primary" class="login-btn" size="large" :loading="loading" @click="onLogin">
+              登 录
+            </el-button>
+          </el-form>
+          <div v-if="dingtalkEnabled" class="switch-row">
+            <a class="switch-link" @click="onSwitchToDingtalk">← 返回钉钉登录</a>
+          </div>
+        </template>
+      </div>
+      <div class="login-footer">&copy; 2026 合同风险扫描系统 · 企业版 v0.1.0</div>
+    </section>
   </div>
 </template>
 
@@ -222,49 +242,81 @@ async function onLogin() {
 .login-page {
   min-height: 100vh;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
   background: linear-gradient(135deg, #eef4ff 0%, #f8fafc 55%, #f1f5f9 100%);
   color: #0f172a;
 }
 
-/* ===== 顶部品牌区（说明系统用途） ===== */
-.brand-head {
-  text-align: center;
-  margin-bottom: 28px;
-}
-.brand-row {
+/* ===== 左侧品牌区（浅色，高级感） ===== */
+.brand-panel {
+  flex: 1.1;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  background: linear-gradient(160deg, #eaf2ff 0%, #f8fbff 100%);
 }
-.brand-row h1 {
-  margin: 0;
-  font-size: 24px;
+.brand-inner {
+  max-width: 440px;
+  padding: 40px;
+}
+.brand-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.25);
+}
+.brand-title {
+  margin: 0 0 10px;
+  font-size: 30px;
   font-weight: 700;
   color: #0f172a;
 }
 .brand-slogan {
-  margin: 8px 0 0;
-  font-size: 13px;
+  margin: 0 0 36px;
+  font-size: 14px;
   color: #64748b;
   letter-spacing: 1px;
 }
-.brand-icon {
-  flex-shrink: 0;
+.brand-features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.brand-features li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: #475569;
+}
+.feature-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #3b82f6;
 }
 
-/* ===== 登录卡片（浅色简洁，无边框） ===== */
+/* ===== 右侧登录区（浅色卡片，无边框） ===== */
+.form-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
 .login-card {
   width: 100%;
-  max-width: 380px;
-  padding: 40px 36px 20px;
+  max-width: 420px;
+  padding: 40px 40px 20px;
   background: #fff;
   border-radius: 16px;
-  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
 }
 .card-head {
   margin-bottom: 20px;
@@ -274,8 +326,8 @@ async function onLogin() {
 }
 .card-head h2 {
   margin: 12px 0 6px;
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 22px;
+  font-weight: 700;
   color: #0f172a;
 }
 .card-head p {
@@ -313,6 +365,7 @@ async function onLogin() {
   letter-spacing: 4px;
   background: linear-gradient(90deg, #2563eb, #3b82f6);
   border: none;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.22);
 }
 .login-btn:hover {
   background: linear-gradient(90deg, #1d4ed8, #2563eb);
