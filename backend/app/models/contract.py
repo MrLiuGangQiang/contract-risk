@@ -55,7 +55,10 @@ class ContractRisk(TimestampMixin, Base):
     user_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("sys_user.id", ondelete="RESTRICT"), nullable=False
     )
-    rule_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    rule_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    rule_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    snippet_start: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    snippet_end: Mapped[int | None] = mapped_column(Integer, nullable=True)
     rule_name: Mapped[str] = mapped_column(String(128), nullable=False)
     category: Mapped[str] = mapped_column(String(32), nullable=False)
     severity: Mapped[str] = mapped_column(String(16), nullable=False)

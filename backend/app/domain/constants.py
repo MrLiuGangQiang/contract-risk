@@ -47,6 +47,30 @@ RISK_RULE_CATEGORY_TECHNOLOGY = "technology"
 RISK_RULE_CATEGORY_CONTRACT = "contract"
 RISK_RULE_CATEGORY_GENERAL = "general"
 
+# 维度展示名称与扫描顺序（并发任务按此顺序展示）
+RISK_CATEGORY_LABELS = {
+    RISK_RULE_CATEGORY_PROJECT: "项目管理",
+    RISK_RULE_CATEGORY_TECHNOLOGY: "技术风险",
+    RISK_RULE_CATEGORY_CONTRACT: "合同条款",
+    RISK_RULE_CATEGORY_GENERAL: "通用风险",
+    "subject": "主体与签署",
+    "payment": "付款与结算",
+    "delivery": "交付与验收",
+    "breach": "违约责任",
+    "ip": "知识产权",
+    "confidential": "保密与数据安全",
+    "dispute": "争议解决",
+    "tax": "税务与发票",
+    "warranty": "质保与售后",
+    "compliance": "合规审查",
+}
+RISK_CATEGORY_ORDER = [
+    RISK_RULE_CATEGORY_PROJECT,
+    RISK_RULE_CATEGORY_TECHNOLOGY,
+    RISK_RULE_CATEGORY_CONTRACT,
+    RISK_RULE_CATEGORY_GENERAL,
+]
+
 # ==================== 系统配置键 ====================
 CONFIG_KEY_DINGTALK = "dingtalk"
 CONFIG_KEY_AI = "ai"
@@ -54,6 +78,7 @@ CONFIG_KEY_AI = "ai"
 # ==================== 合同风险识别 ====================
 CONTRACT_STATUS_DONE = 1
 CONTRACT_STATUS_FAILED = 2
+CONTRACT_STATUS_SCANNING = 3  # 后台扫描中（上传即入库，异步执行规则+AI 分析）
 CONTRACT_MAX_SIZE = 20 * 1024 * 1024
 CONTRACT_ALLOWED_EXTENSIONS = {"txt", "pdf", "docx"}
 

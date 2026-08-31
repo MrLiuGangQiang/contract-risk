@@ -112,10 +112,13 @@
 
 | 方法 | 路径 | 权限 | 说明 |
 | --- | --- | --- | --- |
-| POST | `/api/v1/contracts/upload` | 登录 | 上传合同（multipart file），同步扫描并返回结果 |
+| POST | `/api/v1/contracts/upload` | 登录 | 上传合同：立即入库（扫描中），维度并发 + AI 流式后台扫描，返回 `{job_id, contract_id}` |
+| GET | `/api/v1/contracts/jobs/{job_id}` | 登录 | 查询后台扫描任务进度（含维度任务清单与 AI 状态）；非本人任务 404 |
+| GET | `/api/v1/contracts/jobs/{job_id}/stream` | 登录 | 拉取 AI 流式输出全文（前端打字机效果）；非本人任务 404 |
+| GET | `/api/v1/contracts/{id}/job` | 登录 | 按合同查询关联扫描进度 |
 | GET | `/api/v1/contracts` | 登录 | 合同分页列表（page/page_size/keyword/severity） |
 | GET | `/api/v1/contracts/{id}` | 登录 | 合同详情 + 风险列表 |
-| POST | `/api/v1/contracts/{id}/rescan` | 登录 | 重新扫描 |
+| POST | `/api/v1/contracts/{id}/rescan` | 登录 | 重新扫描（后台异步，返回 `{job_id}`） |
 | DELETE | `/api/v1/contracts/{id}` | 登录 | 软删除合同 |
 
 > 用户只能访问自己的合同；非本人返回 404 隐藏；详细设计见《11-合同风险识别核心功能设计》。

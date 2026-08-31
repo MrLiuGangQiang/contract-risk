@@ -31,6 +31,10 @@ def get_redis() -> aioredis.Redis:
             encoding="utf-8",
             decode_responses=True,
             max_connections=settings.redis_max_connections,
+            # 远端 Redis 会回收空闲连接：主动健康检查 + TCP keepalive，
+            # 避免取出陈旧连接时才收到 10054 强制断开
+            health_check_interval=30,
+            socket_keepalive=True,
         )
     return _pool
 
@@ -68,6 +72,11 @@ def _login_rate_key(identifier: str) -> str:
 
 def _login_fail_key(identifier: str) -> str:
     return f"{REDIS_RATELIMIT_LOGIN_FAIL_PREFIX}{identifier}"
+
+
+def _login_fail_lock_key(identifier: str) -> str:
+    """连续失败达到阈值后的锁定标记键（与计数键分离，避免 1 次失败即被误判为锁定）。"""
+    return f"{REDIS_RATELIMIT_LOGIN_FAIL_PREFIX}lock:{identifier}"
 
 
 def _config_cache_key(config_key: str) -> str:
@@ -141,9 +150,12 @@ async def login_rate_exceeded(identifier: str, limit_per_minute: int) -> bool:
 
 
 async def login_fail_locked(identifier: str, max_fails: int, lock_minutes: int) -> bool:
-    """连续失败锁定：超过 max_fails 则锁定 lock_minutes 分钟。"""
-    key = _login_fail_key(identifier)
-    return bool(await get_redis().get(key))
+    """连续失败锁定：仅当锁定标记存在时返回 True。
+
+    计数键（失败次数）与锁定键分离：失败 1~(max_fails-1) 次只累计计数，
+    达到 max_fails 次才写入锁定标记（锁定 lock_minutes 分钟）。
+    """
+    return bool(await get_redis().get(_login_fail_lock_key(identifier)))
 
 
 async def record_login_fail(identifier: str, max_fails: int, lock_minutes: int) -> None:
@@ -153,11 +165,12 @@ async def record_login_fail(identifier: str, max_fails: int, lock_minutes: int) 
     if count == 1:
         await get_redis().expire(key, 60 * 60)  # 计数窗口 1 小时
     if int(count) >= max_fails:
-        await get_redis().set(key, "1", ex=lock_minutes * 60)
+        await get_redis().set(_login_fail_lock_key(identifier), "1", ex=lock_minutes * 60)
+        await get_redis().delete(key)  # 锁定后清零计数，解锁后重新累计
 
 
 async def clear_login_fail(identifier: str) -> None:
-    """登录成功后清除失败计数。"""
+    """登录成功后清除失败计数（不影响锁定标记，锁定需等待到期）。"""
     await get_redis().delete(_login_fail_key(identifier))
 
 

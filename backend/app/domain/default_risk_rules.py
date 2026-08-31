@@ -1,199 +1,90 @@
-"""默认风险规则（《10-合同风险规则配置设计》）。
+"""内置合同风险规则库（《10-合同风险规则配置设计》，极简模型）。
 
-首次全局模板为空时由 bootstrap 幂等写入；四个维度：项目管理/技术/合同条款/通用。
+- 14 个开放维度、53 条一句话规则（乙方视角：供应商/服务方审查合同）；
+- 每条规则仅 `rule_text`（AI 理解并逐条校验合同的依据）+ 可选维度；
+- bootstrap 按 rule_text 幂等补种，不覆盖用户修改。
 """
 from typing import Any
 
 DEFAULT_RISK_RULES: list[dict[str, Any]] = [
-    # ==================== 项目管理风险 ====================
-    {
-        "code": "PROJECT_SCHEDULE_DELAY",
-        "name": "项目进度严重延期风险",
-        "category": "project",
-        "severity": "high",
-        "keywords": ["进度", "延期", "里程碑", "工期", "滞后"],
-        "description": "项目计划缺少明确的里程碑、关键路径与延期责任约定，交付节点存在严重延期风险。",
-        "suggestion": "明确里程碑、关键路径、延期责任与赶工条款，并约定里程碑验收标准。",
-        "enabled": True,
-        "sort_order": 10,
-    },
-    {
-        "code": "PROJECT_RANGE_CHANGE",
-        "name": "项目范围频繁变更风险",
-        "category": "project",
-        "severity": "medium",
-        "keywords": ["范围", "需求变更", "变更签证", "增项"],
-        "description": "需求或范围变更缺少书面确认与费用联动机制，可能导致范围蔓延和成本失控。",
-        "suggestion": "约定变更管理流程、书面确认机制、费用与工期调整规则。",
-        "enabled": True,
-        "sort_order": 20,
-    },
-    {
-        "code": "PROJECT_RESOURCE_SHORTAGE",
-        "name": "关键资源投入不足风险",
-        "category": "project",
-        "severity": "high",
-        "keywords": ["人员", "资源", "投入", "驻场", "团队"],
-        "description": "合同未明确关键人员、资源投入与替换机制，可能出现投入不足或核心人员流失。",
-        "suggestion": "明确关键岗位、驻场要求、人员替换与资源投入保障条款。",
-        "enabled": True,
-        "sort_order": 30,
-    },
-    {
-        "code": "PROJECT_DELIVERABLE_MISSING",
-        "name": "项目交付物缺失风险",
-        "category": "project",
-        "severity": "medium",
-        "keywords": ["交付物", "文档", "验收", "成果", "清单"],
-        "description": "交付物清单、验收标准与验收流程不完整，可能导致交付争议。",
-        "suggestion": "细化交付物清单、验收标准、验收流程与整改期限。",
-        "enabled": True,
-        "sort_order": 40,
-    },
-    # ==================== 技术风险 ====================
-    {
-        "code": "TECH_LICENSE_COMPLIANCE",
-        "name": "开源/第三方许可合规风险",
-        "category": "technology",
-        "severity": "high",
-        "keywords": ["开源", "许可证", "GPL", "商用", "第三方"],
-        "description": "使用开源或第三方组件时未评估许可证约束，存在知识产权与商用合规风险。",
-        "suggestion": "建立开源/第三方组件清单与许可证合规审查，限制传染性许可证使用。",
-        "enabled": True,
-        "sort_order": 100,
-    },
-    {
-        "code": "TECH_DATA_SECURITY",
-        "name": "数据安全与隐私合规风险",
-        "category": "technology",
-        "severity": "high",
-        "keywords": ["数据", "隐私", "泄露", "加密", "脱敏"],
-        "description": "数据存储、传输、访问控制或个人信息保护要求不明确，存在泄露与合规风险。",
-        "suggestion": "明确数据分类分级、加密传输、访问控制、脱敏与个人信息保护要求。",
-        "enabled": True,
-        "sort_order": 110,
-    },
-    {
-        "code": "TECH_PERFORMANCE",
-        "name": "系统性能与容量风险",
-        "category": "technology",
-        "severity": "medium",
-        "keywords": ["性能", "并发", "响应时间", "容量", "压测"],
-        "description": "未约定性能指标、容量上限与压测验收标准，系统可能无法满足业务要求。",
-        "suggestion": "约定P95响应时间、并发数、容量上限、压测场景与验收指标。",
-        "enabled": True,
-        "sort_order": 120,
-    },
-    {
-        "code": "TECH_MAINTENANCE",
-        "name": "技术栈与可维护性风险",
-        "category": "technology",
-        "severity": "medium",
-        "keywords": ["技术栈", "依赖", "版本", "维护", "停止支持"],
-        "description": "技术栈、依赖版本或运维责任不明确，可能带来停止支持、维护成本与技术债。",
-        "suggestion": "明确技术栈基线、依赖升级策略、运维责任与长期维护承诺。",
-        "enabled": True,
-        "sort_order": 130,
-    },
-    # ==================== 合同条款风险 ====================
-    {
-        "code": "CONTRACT_PAYMENT_ABNORMAL",
-        "name": "付款条款异常风险",
-        "category": "contract",
-        "severity": "high",
-        "keywords": ["付款", "支付", "预付款", "货款", "结算"],
-        "description": "付款节点、比例、条件或逾期责任约定不清，存在资金与履约风险。",
-        "suggestion": "明确付款节点、比例、前提条件、发票要求与逾期付款责任。",
-        "enabled": True,
-        "sort_order": 200,
-    },
-    {
-        "code": "CONTRACT_BREACH_DUTY",
-        "name": "违约责任约定不明风险",
-        "category": "contract",
-        "severity": "high",
-        "keywords": ["违约", "赔偿", "责任", "违约金", "损失"],
-        "description": "违约责任、赔偿范围与违约金约定不完整，发生违约时缺少有效追责依据。",
-        "suggestion": "明确违约情形、违约金计算、损失赔偿范围与责任上限。",
-        "enabled": True,
-        "sort_order": 210,
-    },
-    {
-        "code": "CONTRACT_SUBJECT_ILLEGAL",
-        "name": "合同主体资质风险",
-        "category": "contract",
-        "severity": "high",
-        "keywords": ["主体", "资质", "营业执照", "授权", "签署人"],
-        "description": "合同主体资质、授权或签署人权限未核实，可能导致合同效力问题。",
-        "suggestion": "核实主体资质、经营范围、签署人授权与代理权限。",
-        "enabled": True,
-        "sort_order": 220,
-    },
-    {
-        "code": "CONTRACT_IP_OWNERSHIP",
-        "name": "知识产权归属风险",
-        "category": "contract",
-        "severity": "high",
-        "keywords": ["知识产权", "著作权", "专利", "所有权", "成果"],
-        "description": "项目成果、软件或文档的知识产权归属与使用许可未约定，存在权属争议。",
-        "suggestion": "明确成果归属、许可范围、署名与后续使用边界。",
-        "enabled": True,
-        "sort_order": 230,
-    },
-    {
-        "code": "CONTRACT_DISPUTE_CLAUSE",
-        "name": "争议解决条款缺失风险",
-        "category": "contract",
-        "severity": "medium",
-        "keywords": ["争议", "仲裁", "管辖", "诉讼", "适用法律"],
-        "description": "争议解决方式、管辖法院/仲裁机构或适用法律缺失，增加维权成本与不确定性。",
-        "suggestion": "明确争议解决方式、管辖机构与适用法律。",
-        "enabled": True,
-        "sort_order": 240,
-    },
-    # ==================== 通用风险 ====================
-    {
-        "code": "GENERAL_FORCE_MAJEURE",
-        "name": "不可抗力条款不完整风险",
-        "category": "general",
-        "severity": "medium",
-        "keywords": ["不可抗力", "疫情", "自然灾害", "免责", "通知"],
-        "description": "不可抗力的定义、通知义务与后果处理不完整，可能引发履约争议。",
-        "suggestion": "明确不可抗力范围、通知时限、证明要求与合同解除/顺延规则。",
-        "enabled": True,
-        "sort_order": 300,
-    },
-    {
-        "code": "GENERAL_NOTICE_SERVICE",
-        "name": "通知与送达条款缺失风险",
-        "category": "general",
-        "severity": "medium",
-        "keywords": ["通知", "送达", "联系人", "地址", "邮箱"],
-        "description": "通知方式、送达地址与联系人约定不清，可能导致重要文件未有效送达。",
-        "suggestion": "约定通知方式、各方联系人/地址/邮箱及变更通知义务。",
-        "enabled": True,
-        "sort_order": 310,
-    },
-    {
-        "code": "GENERAL_CONFIDENTIALITY",
-        "name": "保密与数据合规风险",
-        "category": "general",
-        "severity": "high",
-        "keywords": ["保密", "数据", "合规", "个人信息", "商业秘密"],
-        "description": "保密义务、保密期限与个人信息处理要求不明确，存在商业信息与合规风险。",
-        "suggestion": "明确保密范围、期限、违约责任与个人信息处理合规要求。",
-        "enabled": True,
-        "sort_order": 320,
-    },
-    {
-        "code": "GENERAL_TERMINATION",
-        "name": "合同解除与终止风险",
-        "category": "general",
-        "severity": "medium",
-        "keywords": ["解除", "终止", "提前", "退出", "清算"],
-        "description": "解除/终止条件、程序与善后义务约定不清，可能造成僵局或损失。",
-        "suggestion": "明确解除/终止条件、通知程序、费用清算与交接义务。",
-        "enabled": True,
-        "sort_order": 330,
-    },
+    # ==================== 1. 项目管理 ====================
+    {"rule_text": "项目必须约定明确的里程碑、工期与延期责任，延期责任应区分甲方原因与乙方原因", "category": "project", "enabled": True, "sort_order": 10},
+    {"rule_text": "需求或范围变更必须书面确认，并同步调整费用和工期", "category": "project", "enabled": True, "sort_order": 20},
+    {"rule_text": "合同必须明确关键人员、资源投入和人员替换机制，人员替换应有合理程序", "category": "project", "enabled": True, "sort_order": 30},
+    {"rule_text": "交付物清单、验收标准和验收流程必须完整明确", "category": "project", "enabled": True, "sort_order": 40},
+    {"rule_text": "付款节点应与里程碑交付成果挂钩，甲方未按节点付款的，乙方有权暂停后续交付", "category": "project", "enabled": True, "sort_order": 50},
+    {"rule_text": "合同必须约定可量化、可执行的验收标准和测试用例", "category": "project", "enabled": True, "sort_order": 60},
+
+    # ==================== 2. 技术风险 ====================
+    {"rule_text": "使用开源或第三方组件前必须评估许可证合规风险", "category": "technology", "enabled": True, "sort_order": 100},
+    {"rule_text": "数据存储、传输、访问控制与个人信息保护必须符合安全要求", "category": "technology", "enabled": True, "sort_order": 110},
+    {"rule_text": "系统性能指标、并发容量和压测验收标准必须明确约定", "category": "technology", "enabled": True, "sort_order": 120},
+    {"rule_text": "技术栈、依赖版本和长期维护责任必须明确，维护范围与费用边界应清晰", "category": "technology", "enabled": True, "sort_order": 130},
+    {"rule_text": "源码、文档与部署资产的交付或托管安排必须明确，且不得无偿转移乙方背景知识产权与通用组件", "category": "technology", "enabled": True, "sort_order": 140},
+    {"rule_text": "系统间接口规范、集成责任与联调验收必须明确", "category": "technology", "enabled": True, "sort_order": 150},
+
+    # ==================== 3. 合同条款 ====================
+    {"rule_text": "付款节点、比例与付款前提条件必须明确，付款进度应与交付成果匹配，甲方逾期付款乙方有权暂停履约并计收利息", "category": "contract", "enabled": True, "sort_order": 200},
+    {"rule_text": "违约情形、违约金、赔偿范围与责任上限必须约定完整", "category": "contract", "enabled": True, "sort_order": 210},
+    {"rule_text": "合同主体资质、经营范围、签署人授权必须合法有效", "category": "contract", "enabled": True, "sort_order": 220},
+    {"rule_text": "项目成果的知识产权归属、许可范围必须明确约定", "category": "contract", "enabled": True, "sort_order": 230},
+    {"rule_text": "争议解决方式、管辖机构与适用法律必须明确", "category": "contract", "enabled": True, "sort_order": 240},
+
+    # ==================== 4. 通用风险 ====================
+    {"rule_text": "不可抗力的定义、通知义务与后果处理必须完整约定", "category": "general", "enabled": True, "sort_order": 300},
+    {"rule_text": "通知方式、送达地址与联系人必须明确，保证重要文件有效送达", "category": "general", "enabled": True, "sort_order": 310},
+    {"rule_text": "保密范围、保密期限与违约责任必须明确约定，且不得过度限制乙方开展同类业务", "category": "general", "enabled": True, "sort_order": 320},
+    {"rule_text": "合同解除或终止的条件、程序与善后义务必须明确，甲方单方解除应有合理理由，已履约部分必须按约付款", "category": "general", "enabled": True, "sort_order": 330},
+
+    # ==================== 5. 主体与签署 ====================
+    {"rule_text": "合同相对方必须具备履行合同所需的资质、许可与经营范围", "category": "subject", "enabled": True, "sort_order": 400},
+    {"rule_text": "合同签署人必须获得有效授权，盖章用印流程必须合规", "category": "subject", "enabled": True, "sort_order": 410},
+    {"rule_text": "应评估甲方的资信状况、付款能力与既往付款记录", "category": "subject", "enabled": True, "sort_order": 420},
+
+    # ==================== 6. 付款与结算 ====================
+    {"rule_text": "付款节点、付款比例与付款前提条件必须一一对应明确", "category": "payment", "enabled": True, "sort_order": 500},
+    {"rule_text": "甲方逾期付款的违约责任、利息与催告机制必须明确约定", "category": "payment", "enabled": True, "sort_order": 510},
+    {"rule_text": "发票类型、开具时限与税率承担必须明确", "category": "payment", "enabled": True, "sort_order": 520},
+    {"rule_text": "价格调整机制、费用上限与额外费用承担必须约定", "category": "payment", "enabled": True, "sort_order": 530},
+    {"rule_text": "付款不得以甲方主观满意或模糊条件作为无限期付款前提", "category": "payment", "enabled": True, "sort_order": 540},
+
+    # ==================== 7. 交付与验收 ====================
+    {"rule_text": "交付时间、交付方式与迟延交付责任必须明确，迟延责任应区分甲方原因与乙方原因", "category": "delivery", "enabled": True, "sort_order": 600},
+    {"rule_text": "验收标准必须可量化、可执行，并附测试用例与验收流程", "category": "delivery", "enabled": True, "sort_order": 610},
+    {"rule_text": "验收期限与逾期视为验收通过/拒收机制必须约定", "category": "delivery", "enabled": True, "sort_order": 620},
+    {"rule_text": "验收不通过的整改期限、复验流程与费用承担必须明确", "category": "delivery", "enabled": True, "sort_order": 630},
+
+    # ==================== 8. 违约责任 ====================
+    {"rule_text": "违约情形应逐项列明，不得使用笼统免责或单方免责条款", "category": "breach", "enabled": True, "sort_order": 700},
+    {"rule_text": "违约金计算方式、损失赔偿范围与间接损失承担必须明确", "category": "breach", "enabled": True, "sort_order": 710},
+    {"rule_text": "乙方赔偿责任应设总额上限并排除间接损失，不得约定无限或连带责任", "category": "breach", "enabled": True, "sort_order": 720},
+
+    # ==================== 9. 知识产权 ====================
+    {"rule_text": "项目成果的知识产权归属必须明确约定；乙方背景技术、通用组件、开源代码及既有知识产权不因本合同无偿转让或许可给甲方", "category": "ip", "enabled": True, "sort_order": 800},
+    {"rule_text": "双方背景知识产权与既有技术的使用边界必须区分清楚", "category": "ip", "enabled": True, "sort_order": 810},
+    {"rule_text": "第三方知识产权侵权责任与索赔承担必须明确，因甲方提供素材或指示引发的侵权由甲方承担", "category": "ip", "enabled": True, "sort_order": 820},
+    {"rule_text": "成果使用许可的范围、期限与是否可转授权必须明确", "category": "ip", "enabled": True, "sort_order": 830},
+
+    # ==================== 10. 保密与数据安全 ====================
+    {"rule_text": "保密信息范围、保密期限与保密义务人必须明确", "category": "confidential", "enabled": True, "sort_order": 900},
+    {"rule_text": "个人信息处理、数据出境与数据合规义务必须符合法律法规", "category": "confidential", "enabled": True, "sort_order": 910},
+    {"rule_text": "数据安全措施、泄露通知与事故责任必须明确约定", "category": "confidential", "enabled": True, "sort_order": 920},
+
+    # ==================== 11. 争议解决 ====================
+    {"rule_text": "争议解决方式（诉讼/仲裁）、管辖地点与机构必须明确", "category": "dispute", "enabled": True, "sort_order": 1000},
+    {"rule_text": "合同适用法律必须明确（涉外合同尤应约定准据法）", "category": "dispute", "enabled": True, "sort_order": 1010},
+    {"rule_text": "维权费用（律师费、公证费等）的承担方式应当约定", "category": "dispute", "enabled": True, "sort_order": 1020},
+
+    # ==================== 12. 税务与发票 ====================
+    {"rule_text": "税费承担、含税/不含税价款与税率变化处理必须明确", "category": "tax", "enabled": True, "sort_order": 1100},
+    {"rule_text": "发票开具时限、类型与未开票的违约责任必须约定", "category": "tax", "enabled": True, "sort_order": 1110},
+
+    # ==================== 13. 质保与售后 ====================
+    {"rule_text": "质保期限、起算时间与质保范围必须明确约定", "category": "warranty", "enabled": True, "sort_order": 1200},
+    {"rule_text": "质保范围、响应时限与免费/收费服务边界必须明确", "category": "warranty", "enabled": True, "sort_order": 1210},
+    {"rule_text": "运维服务内容、SLA 与驻场支持要求必须明确约定，驻场服务成本承担应清晰", "category": "warranty", "enabled": True, "sort_order": 1220},
+
+    # ==================== 14. 合规审查 ====================
+    {"rule_text": "合同内容不得违反法律法规、行业监管与强制性规定", "category": "compliance", "enabled": True, "sort_order": 1300},
+    {"rule_text": "不得涉及出口管制、制裁名单等跨境合规风险条款", "category": "compliance", "enabled": True, "sort_order": 1310},
 ]

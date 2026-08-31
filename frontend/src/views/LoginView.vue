@@ -3,9 +3,7 @@
     <!-- 左侧品牌与核心价值区 -->
     <section class="brand-panel">
       <div class="brand-inner">
-        <div class="brand-logo">
-          <ContractIcon :size="34" color="#fff" />
-        </div>
+        <ContractIcon class="brand-logo" :size="46" color="#2563eb" />
         <h1 class="brand-title">合同风险扫描系统</h1>
         <p class="brand-slogan">AI 驱动的企业级合同风险智能识别平台</p>
 
@@ -294,15 +292,8 @@ async function onLogin() {
   max-width: 460px;
 }
 .brand-logo {
-  width: 62px;
-  height: 62px;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
   margin-bottom: 22px;
-  background: linear-gradient(135deg, #2563eb, #7c3aed);
-  box-shadow: 0 14px 34px rgba(37, 99, 235, 0.32);
 }
 .brand-title {
   margin: 0 0 10px;
@@ -341,12 +332,10 @@ async function onLogin() {
   width: 32px;
   height: 32px;
   flex-shrink: 0;
-  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #2563eb;
-  background: rgba(37, 99, 235, 0.1);
 }
 .feature-card strong {
   display: block;

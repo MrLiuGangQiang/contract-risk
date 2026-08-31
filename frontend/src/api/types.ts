@@ -53,13 +53,8 @@ export interface LoginMethods {
 
 export interface RiskRule {
   id: number
-  code: string
-  name: string
-  category: string
-  severity: string
-  keywords: string[]
-  description: string
-  suggestion: string
+  rule_text: string
+  category: string | null
   enabled: boolean
   sort_order: number
   source: 'global' | 'custom'

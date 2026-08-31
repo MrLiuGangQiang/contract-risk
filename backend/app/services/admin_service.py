@@ -68,7 +68,8 @@ class AdminService:
             duration_ms=request_meta.get("duration_ms"),
             trace_id=request_meta.get("trace_id"),
         )
-
+        await self._session.commit()
+        return result
 
     # ==================== AI 配置 ====================
 
@@ -115,7 +116,5 @@ class AdminService:
             duration_ms=request_meta.get("duration_ms"),
             trace_id=request_meta.get("trace_id"),
         )
-        await self._session.commit()
-        return result
         await self._session.commit()
         return result

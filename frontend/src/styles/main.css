@@ -1,7 +1,7 @@
-/* ============================================================
- * 全局主题样式（品牌设计规范）
- * 主色：#2563EB（企业蓝）  辅助色：#0F172A（深海军蓝）
- * 圆角：12px（卡片）/ 8px（控件）  阴影：柔和分层
+﻿/* ============================================================
+ * 全局主题样式（浅色科技风品牌设计规范）
+ * 主色：#2563EB（企业蓝）→ #7C3AED（AI 紫）渐变
+ * 风格：浅色、通透、科技感、玻璃拟态
  * ============================================================ */
 
 :root {
@@ -13,18 +13,21 @@
   --el-color-primary-light-8: #c1d2fa;
   --el-color-primary-light-9: #e8eefd;
   --el-color-primary-dark-2: #1e4fc0;
-  --el-border-radius-base: 8px;
-  --el-border-radius-small: 6px;
+  --el-border-radius-base: 10px;
+  --el-border-radius-small: 8px;
 
   /* 品牌变量 */
   --brand-primary: #2563eb;
   --brand-primary-hover: #1d4ed8;
+  --brand-violet: #7c3aed;
+  --brand-cyan: #06b6d4;
   --brand-navy: #0f172a;
-  --brand-navy-light: #1e293b;
-  --bg-page: #f4f6fb;
-  --card-radius: 12px;
-  --card-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.06);
-  --card-shadow-hover: 0 4px 12px rgba(15, 23, 42, 0.08), 0 12px 32px rgba(15, 23, 42, 0.1);
+  --bg-page: linear-gradient(170deg, #f6f8fc 0%, #f2f5fb 45%, #f7f8fc 100%);
+  --card-radius: 14px;
+  --card-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 20px rgba(15, 23, 42, 0.05);
+  --card-shadow-hover: 0 4px 10px rgba(15, 23, 42, 0.06), 0 14px 34px rgba(15, 23, 42, 0.09);
+  --tech-gradient: linear-gradient(120deg, #2563eb 0%, #4f46e5 45%, #7c3aed 100%);
+  --tech-gradient-soft: linear-gradient(120deg, rgba(37, 99, 235, 0.09), rgba(124, 58, 237, 0.09));
 }
 
 html,
@@ -40,15 +43,17 @@ body {
     'PingFang SC', 'HarmonyOS Sans SC', 'Microsoft YaHei', 'Helvetica Neue',
     Arial, sans-serif;
   background: var(--bg-page);
+  background-attachment: fixed;
   color: #1f2937;
   -webkit-font-smoothing: antialiased;
 }
 
 /* 通用品牌卡片 */
 .brand-card {
-  border: none;
+  border: 1px solid #e8edf5;
   border-radius: var(--card-radius);
   box-shadow: var(--card-shadow);
+  background: #fff;
 }
 
 /* 页面标题 */
@@ -57,8 +62,9 @@ body {
 }
 .page-header .title {
   font-size: 20px;
-  font-weight: 600;
-  color: #111827;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: 0.5px;
 }
 .page-header .subtitle {
   margin-top: 4px;
@@ -66,9 +72,12 @@ body {
   color: #6b7280;
 }
 
-/* 渐变品牌背景（登录页/横幅） */
+/* 渐变品牌背景（横幅）：浅色科技渐变 */
 .brand-gradient {
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #3b82f6 100%);
+  background:
+    radial-gradient(560px 280px at 90% -30%, rgba(6, 182, 212, 0.16), transparent 60%),
+    radial-gradient(520px 300px at 12% 130%, rgba(124, 58, 237, 0.12), transparent 62%),
+    linear-gradient(120deg, #eef4ff 0%, #f5f8ff 55%, #faf7ff 100%);
 }
 
 /* 表单说明文字 */
@@ -81,10 +90,44 @@ body {
 /* Element Plus 细节微调 */
 .el-card {
   --el-card-border-radius: var(--card-radius);
+  border-color: rgba(226, 232, 240, 0.8);
 }
 .el-button {
   font-weight: 500;
 }
 .el-menu {
   border-right: none;
+}
+.el-button--primary:not(.is-plain):not(.is-text):not(.is-link) {
+  background: var(--tech-gradient);
+  border: none;
+}
+.el-button--primary:not(.is-plain):not(.is-text):not(.is-link):hover,
+.el-button--primary:not(.is-plain):not(.is-text):not(.is-link):focus {
+  background: linear-gradient(120deg, #1d4ed8 0%, #4338ca 45%, #6d28d9 100%);
+  border: none;
+}
+.el-dialog {
+  border-radius: 18px;
+}
+.el-table th.el-table__cell {
+  background: #f6f9ff !important;
+  color: #334155;
+  font-weight: 600;
+}
+
+/* 浅色滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.28);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.45);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
 }

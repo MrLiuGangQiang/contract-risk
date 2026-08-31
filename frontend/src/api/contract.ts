@@ -9,13 +9,15 @@ function errorMessage(e: unknown): string {
   return err.response?.data?.message ?? err.message ?? '请求失败，请稍后再试'
 }
 
-export async function startContractUpload(file: File): Promise<string> {
+export async function startContractUpload(
+  file: File,
+): Promise<{ job_id: string; contract_id: number }> {
   try {
     const form = new FormData()
     form.append('file', file)
     const resp = await client.post('/contracts/upload', form)
     if (resp.data.code !== 0) throw new Error(resp.data.message)
-    return resp.data.data.job_id as string
+    return resp.data.data as { job_id: string; contract_id: number }
   } catch (e) {
     throw new Error(errorMessage(e))
   }
@@ -41,6 +43,27 @@ export async function getContractJob(jobId: string): Promise<ContractJob> {
   }
 }
 
+/** 拉取 AI 流式输出全文（打字机效果数据源） */
+export async function getContractJobStream(jobId: string): Promise<string> {
+  try {
+    const resp = await client.get(`/contracts/jobs/${jobId}/stream`)
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+    return (resp.data.data as { content: string }).content
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+
+export async function getContractJobByContract(contractId: number): Promise<ContractJob> {
+  try {
+    const resp = await client.get(`/contracts/${contractId}/job`)
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+    return resp.data.data
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+
 export async function listContracts(params: {
   page?: number
   page_size?: number
@@ -51,6 +74,16 @@ export async function listContracts(params: {
     const resp = await client.get('/contracts', { params })
     if (resp.data.code !== 0) throw new Error(resp.data.message)
     return resp.data.data
+  } catch (e) {
+    throw new Error(errorMessage(e))
+  }
+}
+
+export async function getContractPreview(id: number): Promise<string> {
+  try {
+    const resp = await client.get(`/contracts/${id}/preview`)
+    if (resp.data.code !== 0) throw new Error(resp.data.message)
+    return (resp.data.data as { text: string }).text
   } catch (e) {
     throw new Error(errorMessage(e))
   }

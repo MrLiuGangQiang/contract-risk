@@ -17,9 +17,34 @@ def _job_key(job_id: str) -> str:
     return f"{REDIS_CONTRACT_JOB_PREFIX}{job_id}"
 
 
+def _contract_job_key(contract_id: int) -> str:
+    """构造合同 -> 任务关联键（用于从合同恢复进度查看）。"""
+    return f"{REDIS_CONTRACT_JOB_PREFIX}contract:{contract_id}"
+
+
+async def link_contract(job_id: str, contract_id: int) -> None:
+    """建立合同与任务的关联（进度查询入口）。"""
+    await redis_client.get_redis().set(_contract_job_key(contract_id), job_id, ex=JOB_TTL_SECONDS)
+
+
+async def get_job_by_contract(contract_id: int) -> dict[str, Any] | None:
+    """按合同查询关联任务状态。"""
+    job_id = await redis_client.get_redis().get(_contract_job_key(contract_id))
+    if job_id is None:
+        return None
+    return await get_job(job_id if isinstance(job_id, str) else job_id.decode())
+
+
 async def create_job(job_id: str, data: dict[str, Any]) -> None:
-    """创建任务初始状态。"""
-    data = {"status": "running", "progress": 0, "stage": "created", "stage_message": "任务已创建", **data}
+    """创建任务初始状态（job_id 一并存储，便于按合同恢复进度时继续轮询）。"""
+    data = {
+        "job_id": job_id,
+        "status": "running",
+        "progress": 0,
+        "stage": "created",
+        "stage_message": "任务已创建",
+        **data,
+    }
     await redis_client.get_redis().set(_job_key(job_id), json.dumps(data, ensure_ascii=False), ex=JOB_TTL_SECONDS)
 
 
@@ -51,3 +76,30 @@ async def get_job(job_id: str) -> dict[str, Any] | None:
     if raw is None:
         return None
     return json.loads(raw)
+
+
+async def get_job_id_by_contract(contract_id: int) -> str | None:
+    """返回合同关联的任务 ID（可能已过期）。"""
+    value = await redis_client.get_redis().get(_contract_job_key(contract_id))
+    if value is None:
+        return None
+    return value if isinstance(value, str) else value.decode()
+
+
+def _ai_stream_key(job_id: str) -> str:
+    """AI 流式输出存储键（完整累积文本，前端按 offset 增量拉取）。"""
+    return f"{REDIS_CONTRACT_JOB_PREFIX}stream:{job_id}"
+
+
+async def append_ai_stream(job_id: str, chunk: str) -> None:
+    """追加 AI 流式输出片段。"""
+    await redis_client.get_redis().append(_ai_stream_key(job_id), chunk)
+    await redis_client.get_redis().expire(_ai_stream_key(job_id), JOB_TTL_SECONDS)
+
+
+async def get_ai_stream(job_id: str) -> str:
+    """读取 AI 流式输出全文（追加式，前端轮询实现打字机效果）。"""
+    value = await redis_client.get_redis().get(_ai_stream_key(job_id))
+    if value is None:
+        return ""
+    return value if isinstance(value, str) else value.decode(errors="replace")

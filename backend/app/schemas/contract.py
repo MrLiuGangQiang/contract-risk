@@ -8,7 +8,9 @@ class ContractRiskOut(BaseModel):
     """风险结果响应（含规则快照）。"""
 
     id: int
-    rule_code: str
+    rule_code: str | None = None
+    snippet_start: int | None = None
+    snippet_end: int | None = None
     rule_name: str
     category: str
     severity: str

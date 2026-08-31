@@ -1,51 +1,36 @@
 """风险规则 DTO（《10-合同风险规则配置设计》第 4 节）。"""
 from datetime import datetime
-from typing import Literal
 
 from pydantic import BaseModel, Field
 
-RiskRuleCategory = Literal["project", "technology", "contract", "general", "payment", "breach", "subject", "ip", "dispute", "other"]
-RiskRuleSeverity = Literal["high", "medium", "low"]
+# 维度为开放格式（《10》第 4 节）：Markdown 一级标题即维度名，可自定义任意维度
+CATEGORY_MAX_LENGTH = 32
 
 
 class RiskRuleCreate(BaseModel):
-    """新建规则请求（code 创建后不可修改）。"""
+    """新建规则请求：只需一句话 rule_text，category 可选。"""
 
-    code: str = Field(min_length=1, max_length=64, pattern=r"^[A-Z0-9_]+$")
-    name: str = Field(min_length=1, max_length=128)
-    category: RiskRuleCategory
-    severity: RiskRuleSeverity
-    keywords: list[str] = Field(default_factory=list, max_length=50)
-    description: str = Field(min_length=1, max_length=2000)
-    suggestion: str = Field(min_length=1, max_length=2000)
+    rule_text: str = Field(min_length=1, max_length=2000)
+    category: str | None = Field(default=None, max_length=CATEGORY_MAX_LENGTH)
     enabled: bool = True
     sort_order: int = Field(default=0, ge=0, le=9999)
 
 
 class RiskRuleUpdate(BaseModel):
-    """更新规则请求（code 不可修改）。"""
+    """更新规则请求：未传字段沿用旧值。"""
 
-    name: str = Field(min_length=1, max_length=128)
-    category: RiskRuleCategory
-    severity: RiskRuleSeverity
-    keywords: list[str] = Field(default_factory=list, max_length=50)
-    description: str = Field(min_length=1, max_length=2000)
-    suggestion: str = Field(min_length=1, max_length=2000)
-    enabled: bool = True
-    sort_order: int = Field(default=0, ge=0, le=9999)
+    rule_text: str | None = Field(default=None, max_length=2000)
+    category: str | None = Field(default=None, max_length=CATEGORY_MAX_LENGTH)
+    enabled: bool | None = None
+    sort_order: int | None = Field(default=None, ge=0, le=9999)
 
 
 class RiskRuleOut(BaseModel):
     """规则响应（source=global/custom，标识来源）。"""
 
     id: int
-    code: str
-    name: str
-    category: str
-    severity: str
-    keywords: list[str] = Field(default_factory=list)
-    description: str
-    suggestion: str
+    rule_text: str
+    category: str | None = None
     enabled: bool
     sort_order: int
     source: str = "global"

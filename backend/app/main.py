@@ -21,6 +21,7 @@ from app.core.logging import request_id_middleware, setup_logging
 from app.core.response import ApiResponse
 from app.integrations import redis_client
 from app.services.bootstrap import bootstrap
+from app.services.contract_scan_job_service import ContractScanJobService
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,8 @@ async def lifespan(app: FastAPI):
     setup_logging(settings.debug)
     async with SessionFactory() as session:
         await bootstrap(session)
+    # 恢复应用重启前中断的后台扫描任务
+    await ContractScanJobService().resume_orphaned()
     yield
     await redis_client.close_redis()
 

@@ -118,15 +118,10 @@ export async function deleteUser(userId: number): Promise<void> {
 // ==================== 风险规则（《10》第 4 节）====================
 
 export interface RiskRulePayload {
-  code?: string
-  name: string
-  category: string
-  severity: string
-  keywords: string[]
-  description: string
-  suggestion: string
-  enabled: boolean
-  sort_order: number
+  rule_text?: string
+  category?: string | null
+  enabled?: boolean
+  sort_order?: number
 }
 
 export async function listRiskRules(params: {
@@ -206,9 +201,9 @@ export async function listMyRiskRules(): Promise<RiskRule[]> {
   }
 }
 
-export async function updateMyRiskRule(code: string, payload: RiskRulePayload): Promise<RiskRule> {
+export async function updateMyRiskRule(ruleId: number, payload: RiskRulePayload): Promise<RiskRule> {
   try {
-    const resp = await client.put(`/risk-rules/me/${encodeURIComponent(code)}`, payload)
+    const resp = await client.put(`/risk-rules/me/${ruleId}`, payload)
     if (resp.data.code !== 0) throw new Error(resp.data.message)
     return resp.data.data
   } catch (e) {
@@ -216,9 +211,9 @@ export async function updateMyRiskRule(code: string, payload: RiskRulePayload): 
   }
 }
 
-export async function deleteMyRiskRule(code: string): Promise<void> {
+export async function deleteMyRiskRule(ruleId: number): Promise<void> {
   try {
-    const resp = await client.delete(`/risk-rules/me/${encodeURIComponent(code)}`)
+    const resp = await client.delete(`/risk-rules/me/${ruleId}`)
     if (resp.data.code !== 0) throw new Error(resp.data.message)
   } catch (e) {
     throw new Error(errorMessage(e))

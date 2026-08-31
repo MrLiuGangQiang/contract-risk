@@ -1,11 +1,9 @@
 <template>
   <AppLayout>
-    <div class="change-password-page brand-gradient">
+    <div class="change-password-page">
     <div class="auth-card">
       <div class="auth-head">
-        <div class="auth-logo">
-          <el-icon :size="24" color="#fff"><lock /></el-icon>
-        </div>
+        <el-icon class="auth-logo" :size="34" color="#2563eb"><lock /></el-icon>
         <h2>修改密码</h2>
         <p v-if="force">首次登录必须修改初始密码后才能继续使用系统</p>
         <p v-else>定期更换密码，保护账号安全</p>
@@ -107,6 +105,11 @@ async function onSubmit() {
   align-items: center;
   justify-content: center;
   padding: 24px;
+  margin: -24px;
+  background:
+    radial-gradient(620px 420px at 15% 12%, rgba(59, 130, 246, 0.10), transparent 62%),
+    radial-gradient(560px 420px at 88% 88%, rgba(124, 58, 237, 0.09), transparent 62%),
+    linear-gradient(135deg, #f7faff 0%, #eef4ff 48%, #f8fafc 100%);
 }
 .auth-card {
   width: 100%;
@@ -114,22 +117,15 @@ async function onSubmit() {
   background: #fff;
   border-radius: 16px;
   padding: 40px 36px;
-  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.3);
+  box-shadow: 0 20px 60px rgba(37, 99, 235, 0.12);
 }
 .auth-head {
   text-align: center;
   margin-bottom: 28px;
 }
 .auth-logo {
-  width: 48px;
-  height: 48px;
+  display: block;
   margin: 0 auto 16px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #2563eb, #3b82f6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
 }
 .auth-head h2 {
   margin: 0 0 8px;

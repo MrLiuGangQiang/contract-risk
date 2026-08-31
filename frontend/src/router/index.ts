@@ -36,29 +36,28 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/contracts/:id/report',
+    name: 'contract-report',
+    component: () => import('@/views/RiskReportView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: '风险报告',
+    },
+  },
+  {
     path: '/',
     name: 'home',
     component: () => import('@/views/HomeView.vue'),
     meta: { requiresAuth: true, title: '首页' },
   },
   {
-    path: '/admin/config/dingtalk',
-    name: 'dingtalk-config',
-    component: () => import('@/views/DingTalkConfigView.vue'),
+    path: '/admin/config',
+    name: 'system-config',
+    component: () => import('@/views/SystemConfigView.vue'),
     meta: {
       requiresAuth: true,
       permission: 'config:dingtalk:read',
-      title: '钉钉配置',
-    },
-  },
-  {
-    path: '/admin/config/ai',
-    name: 'ai-config',
-    component: () => import('@/views/AIConfigView.vue'),
-    meta: {
-      requiresAuth: true,
-      permission: 'config:ai:read',
-      title: 'AI 配置',
+      title: '系统配置',
     },
   },
   {

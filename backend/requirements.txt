@@ -15,6 +15,6 @@ pytest-asyncio
 pytest-cov
 
 # 合同风险识别（《11》）
-pypdf
+pymupdf
 python-docx
 python-multipart

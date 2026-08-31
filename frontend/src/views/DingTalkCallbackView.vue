@@ -1,9 +1,7 @@
 <template>
-  <div class="callback-page brand-gradient">
+  <div class="callback-page">
     <div class="callback-card">
-      <div class="spin-logo">
-        <el-icon :size="26" color="#fff"><document-checked /></el-icon>
-      </div>
+      <el-icon class="spin-logo" :size="42" color="#2563eb"><document-checked /></el-icon>
       <el-icon class="loading-icon" :size="28" color="#2563eb"><loading /></el-icon>
       <h2>{{ title }}</h2>
       <p>{{ description }}</p>
@@ -78,6 +76,10 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   padding: 24px;
+  background:
+    radial-gradient(620px 420px at 15% 12%, rgba(59, 130, 246, 0.10), transparent 62%),
+    radial-gradient(560px 420px at 88% 88%, rgba(124, 58, 237, 0.09), transparent 62%),
+    linear-gradient(135deg, #f7faff 0%, #eef4ff 48%, #f8fafc 100%);
 }
 .callback-card {
   width: 100%;
@@ -86,19 +88,12 @@ onMounted(async () => {
   border-radius: 16px;
   padding: 48px 36px;
   text-align: center;
-  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.3);
+  box-shadow: 0 20px 60px rgba(37, 99, 235, 0.12);
   position: relative;
 }
 .spin-logo {
-  width: 56px;
-  height: 56px;
+  display: block;
   margin: 0 auto 20px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #2563eb, #3b82f6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
 }
 .loading-icon {
   position: absolute;

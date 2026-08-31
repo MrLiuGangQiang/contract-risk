@@ -179,21 +179,23 @@ async def _ensure_admin_user(session: AsyncSession) -> None:
 
 
 async def _ensure_default_risk_rules(session: AsyncSession) -> None:
-    """Seed default risk rules when the global rule set is empty.
-
-    Idempotent: does nothing if any active global rule exists.
-    """
-    existing = (
-        await session.execute(
-            select(RiskRule.id).where(RiskRule.deleted_at.is_(None)).limit(1)
-        )
-    ).scalar_one_or_none()
-    if existing is not None:
-        return
+    """内置默认规则增量补种（按 rule_text 幂等，不覆盖用户修改）。"""
+    existing_texts = {
+        text.strip()
+        for text in (
+            await session.execute(
+                select(RiskRule.rule_text).where(RiskRule.deleted_at.is_(None))
+            )
+        ).scalars()
+    }
+    added = 0
     for item in DEFAULT_RISK_RULES:
-        session.add(RiskRule(**item))
-    await session.flush()
-    logger.info("default risk rules seeded: %s", len(DEFAULT_RISK_RULES))
+        if item["rule_text"].strip() not in existing_texts:
+            session.add(RiskRule(**item))
+            added += 1
+    if added:
+        await session.flush()
+        logger.info("default risk rules seeded: %s new rules", added)
 
 
 async def bootstrap(session: AsyncSession) -> None:

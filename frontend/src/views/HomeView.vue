@@ -1,46 +1,51 @@
 <template>
   <AppLayout>
     <!-- 欢迎横幅 -->
-    <div class="welcome-banner brand-gradient">
+    <div class="welcome-banner">
       <div class="welcome-text">
         <div class="welcome-title">你好，{{ auth.user?.display_name ?? auth.user?.username }} 👋</div>
         <div class="welcome-sub">欢迎使用合同风险扫描系统，祝工作顺利！</div>
       </div>
       <div class="welcome-badge">
-        <el-tag v-if="auth.isSuperAdmin" effect="dark" round>超级管理员</el-tag>
-        <el-tag v-else type="info" effect="plain" round>普通用户</el-tag>
+        <span v-if="auth.isSuperAdmin" class="role-pill role-super">超级管理员</span>
+        <span v-else-if="auth.user?.roles?.includes('admin')" class="role-pill role-admin">管理员</span>
+        <span v-else class="role-pill role-user">普通用户</span>
       </div>
     </div>
 
     <!-- 统计卡片 -->
     <div class="stats">
       <div class="stat-card">
-        <div class="stat-icon blue"><ContractIcon :size="22" color="#fff" /></div>
+        <ContractIcon class="stat-icon" :size="26" color="#2563eb" />
         <div class="stat-meta">
-          <div class="stat-value">--</div>
-          <div class="stat-label">合同总数</div>
+          <div class="stat-value">{{ stats.total }}</div>
+          <div class="stat-label">我的合同</div>
         </div>
+        <div class="stat-spark spark-blue"></div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon orange"><el-icon :size="22"><warning /></el-icon></div>
+        <el-icon class="stat-icon" :size="26" color="#f59e0b"><warning /></el-icon>
         <div class="stat-meta">
-          <div class="stat-value">--</div>
-          <div class="stat-label">风险项</div>
+          <div class="stat-value">{{ stats.risks }}</div>
+          <div class="stat-label">累计风险项</div>
         </div>
+        <div class="stat-spark spark-orange"></div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon green"><el-icon :size="22"><circle-check /></el-icon></div>
+        <el-icon class="stat-icon" :size="26" color="#ef4444"><flag /></el-icon>
         <div class="stat-meta">
-          <div class="stat-value">--</div>
+          <div class="stat-value">{{ stats.high }}</div>
+          <div class="stat-label">高风险项</div>
+        </div>
+        <div class="stat-spark spark-red"></div>
+      </div>
+      <div class="stat-card">
+        <el-icon class="stat-icon" :size="26" color="#10b981"><circle-check /></el-icon>
+        <div class="stat-meta">
+          <div class="stat-value ok">{{ stats.scanned }}</div>
           <div class="stat-label">已完成扫描</div>
         </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon purple"><el-icon :size="22"><monitor /></el-icon></div>
-        <div class="stat-meta">
-          <div class="stat-value ok">正常</div>
-          <div class="stat-label">系统状态</div>
-        </div>
+        <div class="stat-spark spark-green"></div>
       </div>
     </div>
 
@@ -49,10 +54,10 @@
       <el-card v-if="auth.isSuperAdmin" class="brand-card quick-card" shadow="hover">
         <div class="quick-head">
           <el-icon :size="20" color="#2563eb"><setting /></el-icon>
-          <span>钉钉登录配置</span>
+          <span>系统配置</span>
         </div>
-        <p class="quick-desc">配置企业钉钉应用的 Client ID / Client Secret，启用后员工可通过钉钉扫码登录。</p>
-        <el-button type="primary" plain @click="router.push({ name: 'dingtalk-config' })">
+        <p class="quick-desc">配置钉钉企业登录与 AI 大模型，启用后员工扫码登录、合同智能识别即刻生效。</p>
+        <el-button type="primary" plain @click="router.push({ name: 'system-config' })">
           前往配置
         </el-button>
       </el-card>
@@ -68,67 +73,135 @@
 
       <el-card class="brand-card quick-card" shadow="hover">
         <div class="quick-head">
-          <el-icon :size="20" color="#10b981"><trend-charts /></el-icon>
-          <span>风险报告（即将上线）</span>
+          <el-icon :size="20" color="#7c3aed"><magic-stick /></el-icon>
+          <span>我的风险规则</span>
         </div>
-        <p class="quick-desc">风险扫描结果汇总与报告导出，支持钉钉消息通知。</p>
-        <el-button disabled>敬请期待</el-button>
+        <p class="quick-desc">查看生效规则，个性化调整风险识别维度与关键词，可随时恢复默认模板。</p>
+        <el-button type="primary" plain @click="router.push({ name: 'risk-rules' })">前往配置</el-button>
       </el-card>
     </div>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
+import { onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   CircleCheck,
-  Monitor,
+  Flag,
+  MagicStick,
   Setting,
-  TrendCharts,
   Warning,
 } from '@element-plus/icons-vue'
 import AppLayout from '@/components/AppLayout.vue'
 import ContractIcon from '@/components/ContractIcon.vue'
 import { useAuthStore } from '@/stores/auth'
+import { listContracts } from '@/api/contract'
 
 const router = useRouter()
 const auth = useAuthStore()
+
+const stats = reactive({ total: 0, risks: 0, high: 0, scanned: 0 })
+
+onMounted(async () => {
+  try {
+    const data = await listContracts({ page: 1, page_size: 100 })
+    stats.total = data.total
+    stats.risks = data.items.reduce((sum, c) => sum + c.risk_count, 0)
+    stats.high = data.items.reduce((sum, c) => sum + c.high_count, 0)
+    stats.scanned = data.items.length
+  } catch {
+    // 统计失败不影响首页展示，保持默认值
+  }
+})
 </script>
 
 <style scoped>
-/* 欢迎横幅 */
+/* 欢迎横幅（浅色科技渐变 + 网格纹理） */
 .welcome-banner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   border-radius: var(--card-radius);
-  padding: 28px 32px;
-  color: #fff;
+  padding: 30px 34px;
+  color: #0f172a;
+  background:
+    radial-gradient(460px 240px at 88% -20%, rgba(124, 58, 237, 0.16), transparent 62%),
+    radial-gradient(420px 240px at 8% 130%, rgba(6, 182, 212, 0.14), transparent 62%),
+    linear-gradient(120deg, #eef4ff 0%, #f5f8ff 55%, #faf7ff 100%);
+  border: 1px solid rgba(37, 99, 235, 0.14);
   box-shadow: var(--card-shadow);
   margin-bottom: 20px;
   position: relative;
   overflow: hidden;
 }
+.welcome-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(37, 99, 235, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.05) 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: radial-gradient(600px 260px at 50% 0%, #000, transparent 75%);
+  pointer-events: none;
+}
 .welcome-banner::after {
   content: '';
   position: absolute;
-  width: 260px;
-  height: 260px;
+  width: 280px;
+  height: 280px;
   border-radius: 50%;
-  right: -60px;
-  top: -120px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.14), transparent 65%);
+  right: -70px;
+  top: -130px;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.12), transparent 65%);
+  pointer-events: none;
 }
 .welcome-title {
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 23px;
+  font-weight: 800;
   letter-spacing: 0.5px;
+  background: linear-gradient(90deg, #1d4ed8, #7c3aed);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 .welcome-sub {
-  margin-top: 6px;
+  margin-top: 8px;
   font-size: 13px;
-  opacity: 0.85;
+  color: #64748b;
 }
+/* 角色徽章 */
+.welcome-badge {
+  position: relative;
+  z-index: 1;
+}
+.role-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 18px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  backdrop-filter: blur(6px);
+}
+.role-super {
+  color: #fff;
+  background: linear-gradient(120deg, #2563eb, #7c3aed);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+}
+.role-admin {
+  color: #0e7490;
+  background: rgba(6, 182, 212, 0.12);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+.role-user {
+  color: #475569;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
 
 /* 统计卡 */
 .stats {
@@ -152,19 +225,23 @@ const auth = useAuthStore()
   box-shadow: var(--card-shadow-hover);
 }
 .stat-icon {
-  width: 46px;
-  height: 46px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
   flex-shrink: 0;
 }
-.stat-icon.blue { background: linear-gradient(135deg, #3b82f6, #2563eb); }
-.stat-icon.orange { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
-.stat-icon.green { background: linear-gradient(135deg, #34d399, #10b981); }
-.stat-icon.purple { background: linear-gradient(135deg, #a78bfa, #8b5cf6); }
+.stat-card { position: relative; overflow: hidden; }
+.stat-spark {
+  position: absolute;
+  right: -26px;
+  bottom: -34px;
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  opacity: 0.16;
+  pointer-events: none;
+}
+.spark-blue { background: radial-gradient(circle, #2563eb, transparent 70%); }
+.spark-orange { background: radial-gradient(circle, #f59e0b, transparent 70%); }
+.spark-red { background: radial-gradient(circle, #ef4444, transparent 70%); }
+.spark-green { background: radial-gradient(circle, #10b981, transparent 70%); }
 .stat-value {
   font-size: 24px;
   font-weight: 700;

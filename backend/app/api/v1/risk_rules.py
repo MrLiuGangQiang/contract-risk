@@ -28,28 +28,28 @@ async def list_my_rules(
     return ApiResponse.ok(request, data=[r.model_dump(mode="json") for r in data])
 
 
-@router.put("/me/{code}")
+@router.put("/me/{rule_id}")
 async def update_my_rule(
-    code: str,
+    rule_id: int,
     payload: RiskRuleUpdate,
     request: Request,
     session: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """保存/更新当前用户个人副本。"""
-    data = await RiskRuleService(session).upsert_custom(user.id, code, payload)
+    """保存/更新当前用户个人副本（rule_id = 全局规则 id）。"""
+    data = await RiskRuleService(session).upsert_custom(user.id, rule_id, payload)
     return ApiResponse.ok(request, data=data.model_dump(mode="json"))
 
 
-@router.delete("/me/{code}")
+@router.delete("/me/{rule_id}")
 async def delete_my_rule(
-    code: str,
+    rule_id: int,
     request: Request,
     session: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
     """恢复单条默认：删除当前用户该规则个人副本。"""
-    await RiskRuleService(session).delete_custom(user.id, code)
+    await RiskRuleService(session).delete_custom(user.id, rule_id)
     return ApiResponse.ok(request, data=None, message="已恢复默认")
 
 

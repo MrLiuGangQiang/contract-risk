@@ -8,10 +8,10 @@
         </div>
         <div class="upload-row">
           <input ref="fileRef" type="file" accept=".txt,.pdf,.docx" style="display: none" @change="onFileChange" />
-          <el-button type="primary" :icon="Upload" :loading="uploading" @click="fileRef?.click()">
-            选择合同文件（txt / pdf / docx）
+          <el-button type="primary" :icon="UploadFilled" :loading="uploading" @click="fileRef?.click()">
+            上传合同
           </el-button>
-          <span class="upload-tip">单文件 ≤ 20MB；任务后台执行，可实时查看进度</span>
+          <span class="upload-tip">支持 txt / pdf / docx · 单文件 ≤ 20MB</span>
         </div>
       </el-card>
 
@@ -30,27 +30,45 @@
 
         <el-table v-loading="loading" :data="items" stripe>
           <el-table-column prop="file_name" label="文件名" min-width="220" show-overflow-tooltip />
-          <el-table-column label="类型" width="90">
+          <el-table-column label="类型" width="80">
             <template #default="{ row }">{{ row.file_ext.toUpperCase() }}</template>
           </el-table-column>
-          <el-table-column label="字符数" width="100">
-            <template #default="{ row }">{{ row.total_chars }}</template>
-          </el-table-column>
-          <el-table-column label="风险" width="200">
+          <el-table-column label="状态" width="110">
             <template #default="{ row }">
-              <el-tag type="danger" size="small">高 {{ row.high_count }}</el-tag>
-              <el-tag type="warning" size="small" class="risk-tag">中 {{ row.medium_count }}</el-tag>
-              <el-tag type="info" size="small" class="risk-tag">低 {{ row.low_count }}</el-tag>
+              <span v-if="row.status === CONTRACT_STATUS_SCANNING" class="status-scanning">
+                <span class="scan-pulse"></span>扫描中
+              </span>
+              <el-tag v-else-if="row.status === CONTRACT_STATUS_FAILED" type="danger" size="small" effect="light">失败</el-tag>
+              <el-tag v-else type="success" size="small" effect="light">已完成</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="风险" width="210">
+            <template #default="{ row }">
+              <span v-if="row.status === CONTRACT_STATUS_SCANNING" class="risk-analyzing">AI + 规则分析中...</span>
+              <span v-else-if="row.status === CONTRACT_STATUS_FAILED" class="risk-none">-</span>
+              <template v-else>
+                <el-tag type="danger" size="small">高 {{ row.high_count }}</el-tag>
+                <el-tag type="warning" size="small" class="risk-tag">中 {{ row.medium_count }}</el-tag>
+                <el-tag type="info" size="small" class="risk-tag">低 {{ row.low_count }}</el-tag>
+              </template>
             </template>
           </el-table-column>
           <el-table-column label="上传时间" min-width="150">
             <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="190" fixed="right">
+          <el-table-column label="操作" width="230" fixed="right">
             <template #default="{ row }">
-              <el-button link type="primary" @click="openDetail(row.id)">查看</el-button>
-              <el-button link type="warning" @click="onRescan(row)">重扫</el-button>
-              <el-button link type="danger" @click="onDelete(row)">删除</el-button>
+              <template v-if="row.status === CONTRACT_STATUS_SCANNING">
+                <el-button link type="primary" @click="openJobByContract(row)">进度</el-button>
+              </template>
+              <template v-else>
+                <div class="row-actions">
+                  <el-button v-if="row.status !== CONTRACT_STATUS_FAILED" link type="primary" @click="openReport(row.id)">报告</el-button>
+                  <el-button v-if="row.status !== CONTRACT_STATUS_FAILED" link @click="openPreview(row)">预览</el-button>
+                  <el-button link type="warning" @click="onRescan(row)">{{ row.status === CONTRACT_STATUS_FAILED ? '重新扫描' : '重扫' }}</el-button>
+                  <el-button link type="danger" @click="onDelete(row)">删除</el-button>
+                </div>
+              </template>
             </template>
           </el-table-column>
         </el-table>
@@ -67,124 +85,56 @@
         </div>
       </el-card>
 
-      <!-- 风险详情 -->
-      <el-dialog v-model="detailVisible" title="合同风险识别结果" width="900px" top="5vh" destroy-on-close>
-        <div v-loading="detailLoading">
-          <div v-if="detail" class="detail-head">
-            <div class="detail-file">{{ detail.contract.file_name }}</div>
-            <div class="detail-meta">{{ detail.contract.total_chars }} 字符 · {{ detail.risks.length }} 项风险</div>
-          </div>
 
-          <div v-if="detail && detail.risks.length === 0" class="empty-risk">
-            未识别到风险，合同内容较规范。
-          </div>
 
-          <div v-for="(group, dim) in groupedRisks" :key="dim" class="risk-group">
-            <div class="group-title">{{ categoryMap[dim] ?? dim }}</div>
-            <div v-for="risk in group" :key="risk.id" class="risk-card">
-              <div class="risk-head">
-                <el-tag :type="severityType(risk.severity)" size="small">
-                  {{ severityMap[risk.severity] ?? risk.severity }}
-                </el-tag>
-                <el-tag :type="risk.risk_source === 'ai' ? 'primary' : 'info'" size="small" effect="plain">
-                  {{ risk.risk_source === 'ai' ? 'AI' : '规则' }}
-                </el-tag>
-                <span class="risk-name">{{ risk.rule_name }}</span>
-                <span class="risk-code">{{ risk.rule_code }}</span>
-              </div>
-              <div class="risk-kws">
-                命中：
-                <el-tag v-for="kw in risk.matched_keywords" :key="kw" size="small" type="info" effect="plain">{{ kw }}</el-tag>
-              </div>
-              <pre class="risk-snippet">{{ risk.snippet }}</pre>
-              <div class="risk-desc">{{ risk.description }}</div>
-              <div class="risk-suggest">建议：{{ risk.suggestion }}</div>
-            </div>
+      <!-- 扫描进度（后台任务：维度并发 + AI 流式） -->
+      <el-dialog v-model="scanVisible" width="760px" top="6vh" @closed="onScanDialogClosed">
+        <template #header>
+          <div class="scan-dialog-head">
+            <span class="scan-dialog-title">后台扫描进行中</span>
+            <span class="scan-dialog-sub">关闭弹窗不影响扫描，任务在后台继续执行，可随时在列表查看进度</span>
           </div>
-        </div>
-        <template #footer>
-          <el-button @click="detailVisible = false">关闭</el-button>
-          <el-button type="warning" :loading="rescanning" @click="onRescanCurrent">重新扫描</el-button>
         </template>
-      </el-dialog>
-
-      <!-- 扫描进度（大模型思维式展示） -->
-      <el-dialog v-model="scanVisible" title="合同风险识别中" width="620px" :close-on-click-modal="false" @closed="stopPolling" @open="startPollingState">
-        <div class="scan-body">
-          <div class="scan-stage">
-            <span class="scan-stage-text">{{ scanJob?.stage_message || '正在启动任务...' }}</span>
-            <span class="scan-dots">
-              <i></i><i></i><i></i>
-            </span>
-          </div>
-          <el-progress :percentage="scanJob?.progress ?? 0" :stroke-width="10" :show-text="false" />
-          <div ref="logRef" class="scan-log">
-            <div
-              v-for="(ev, i) in scanJob?.events || []"
-              :key="i"
-              class="scan-log-line"
-              :class="{ error: ev.level === 'error' }"
-            >
-              <span class="log-time">{{ ev.time }}</span>
-              <span>{{ ev.message }}</span>
-            </div>
-            <div v-if="scanJob?.status === 'running'" class="scan-log-line current">
-              <span class="log-time">{{ currentTime }}</span>
-              <span class="current-text">{{ scanJob.stage_message }}</span>
-              <span class="scan-dots"><i></i><i></i><i></i></span>
-            </div>
-          </div>
-          <div class="scan-steps">
-            <div v-for="step in steps" :key="step.progress" class="scan-step" :class="{ active: (scanJob?.progress ?? 0) >= step.progress }">
-              <span class="scan-step-icon">{{ (scanJob?.progress ?? 0) >= step.progress ? '✓' : '·' }}</span>
-              <span>{{ step.label }}</span>
-            </div>
-          </div>
-          <div v-if="scanJob?.status === 'failed'" class="scan-error">{{ scanJob.error || scanJob.stage_message }}</div>
-        </div>
+        <ScanProgressPanel :job="scanJob" :stream-text="aiStreamText" />
       </el-dialog>
     </div>
+
+    <el-drawer v-model="previewVisible" :title="previewName" size="56%" destroy-on-close>
+      <div v-loading="previewLoading" class="preview-scroll">
+        <pre class="preview-text">{{ previewText }}</pre>
+      </div>
+    </el-drawer>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, Search, Upload } from '@element-plus/icons-vue'
+import { Refresh, Search, UploadFilled } from '@element-plus/icons-vue'
 import {
   deleteContract,
-  getContract,
   getContractJob,
+  getContractJobByContract,
+  getContractJobStream,
+  getContractPreview,
   listContracts,
   startContractRescan,
   startContractUpload,
 } from '@/api/contract'
-import type { Contract, ContractDetail, ContractJob, ContractRisk } from '@/api/contractTypes'
+import type { Contract, ContractJob } from '@/api/contractTypes'
+import { CONTRACT_STATUS_FAILED, CONTRACT_STATUS_SCANNING } from '@/api/contractTypes'
 import AppLayout from '@/components/AppLayout.vue'
+import ScanProgressPanel from '@/components/ScanProgressPanel.vue'
 
-const categoryMap: Record<string, string> = {
-  project: '项目管理风险',
-  technology: '技术风险',
-  contract: '合同条款风险',
-  general: '通用风险',
-}
+const router = useRouter()
+
+/** 列表最高风险筛选下拉选项 */
 const severityMap: Record<string, string> = {
-  high: '高',
-  medium: '中',
-  low: '低',
+  high: '含高风险',
+  medium: '含中风险',
+  low: '含低风险',
 }
-function severityType(severity: string): 'danger' | 'warning' | 'info' {
-  if (severity === 'high') return 'danger'
-  if (severity === 'medium') return 'warning'
-  return 'info'
-}
-
-const steps = [
-  { progress: 20, label: '提取合同文本' },
-  { progress: 45, label: '规则匹配' },
-  { progress: 70, label: 'AI 深度分析' },
-  { progress: 90, label: '生成风险结果' },
-]
 
 const loading = ref(false)
 const items = ref<Contract[]>([])
@@ -197,37 +147,59 @@ const severity = ref('')
 const uploading = ref(false)
 const fileRef = ref<HTMLInputElement>()
 
-const detailVisible = ref(false)
-const detailLoading = ref(false)
-const detail = ref<ContractDetail | null>(null)
 const rescanning = ref(false)
-const currentDetailId = ref(0)
 
 const scanVisible = ref(false)
 const scanJob = ref<ContractJob | null>(null)
-const logRef = ref<HTMLDivElement>()
-const currentTime = ref('')
-let polling = false
 
-const groupedRisks = computed<Record<string, ContractRisk[]>>(() => {
-  const groups: Record<string, ContractRisk[]> = {}
-  for (const risk of detail.value?.risks ?? []) {
-    if (!groups[risk.category]) groups[risk.category] = []
-    groups[risk.category].push(risk)
+// ===== 合同原文预览 =====
+const previewVisible = ref(false)
+const previewLoading = ref(false)
+const previewText = ref('')
+const previewName = ref('')
+
+async function openPreview(row: Contract) {
+  previewVisible.value = true
+  previewLoading.value = true
+  previewName.value = row.file_name
+  previewText.value = ''
+  try {
+    previewText.value = await getContractPreview(row.id)
+  } catch (e) {
+    ElMessage.error((e as Error).message)
+  } finally {
+    previewLoading.value = false
   }
-  return groups
+}
+const currentJobId = ref('')
+const aiStreamText = ref('')
+
+
+
+const hasScanning = computed(() => items.value.some((c) => c.status === CONTRACT_STATUS_SCANNING))
+let listTimer: ReturnType<typeof setInterval> | null = null
+
+onMounted(() => {
+  void loadList()
 })
 
-watch(scanJob, async () => {
-  currentTime.value = new Date().toLocaleTimeString('zh-CN', { hour12: false })
-  await nextTick()
-  logRef.value?.scrollTo({ top: logRef.value.scrollHeight, behavior: 'smooth' })
+onBeforeUnmount(() => {
+  if (listTimer) clearInterval(listTimer)
 })
 
-onMounted(loadList)
+/** 存在后台扫描中的合同时，自动轮询列表刷新状态 */
+watch(hasScanning, (scanning) => {
+  if (listTimer) {
+    clearInterval(listTimer)
+    listTimer = null
+  }
+  if (scanning) {
+    listTimer = setInterval(() => void loadList(true), 2500)
+  }
+})
 
-async function loadList() {
-  loading.value = true
+async function loadList(silent = false) {
+  if (!silent) loading.value = true
   try {
     const data = await listContracts({
       page: page.value,
@@ -238,7 +210,7 @@ async function loadList() {
     items.value = data.items
     total.value = data.total
   } catch (e) {
-    ElMessage.error((e as Error).message)
+    if (!silent) ElMessage.error((e as Error).message)
   } finally {
     loading.value = false
   }
@@ -249,11 +221,7 @@ function onSearch() {
   void loadList()
 }
 
-async function onFileChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  input.value = ''
-  if (!file) return
+async function handleFile(file: File) {
   const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
   if (!['txt', 'pdf', 'docx'].includes(ext)) {
     ElMessage.warning('仅支持 txt / pdf / docx 文件')
@@ -265,7 +233,8 @@ async function onFileChange(event: Event) {
   }
   uploading.value = true
   try {
-    const jobId = await startContractUpload(file)
+    const { job_id: jobId } = await startContractUpload(file)
+    await loadList()
     await pollJob(jobId)
   } catch (e) {
     ElMessage.error((e as Error).message)
@@ -274,77 +243,132 @@ async function onFileChange(event: Event) {
   }
 }
 
+async function onFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  await handleFile(file)
+}
+
+/**
+ * 轮询后台扫描任务：弹窗可随时关闭（扫描在后台继续），
+ * 完成后提示 + 刷新列表，不强制打开详情。
+ */
 async function pollJob(jobId: string) {
+  currentJobId.value = jobId
+  aiStreamText.value = ''
   scanVisible.value = true
   scanJob.value = { status: 'running', progress: 0, stage: 'created', stage_message: '任务已创建' }
-  polling = true
-  while (polling) {
+  while (currentJobId.value === jobId) {
     try {
       const job = await getContractJob(jobId)
       scanJob.value = job
+      // AI 流式输出同步拉取（打字机效果）
+      if (job.ai?.status === 'running') {
+        try {
+          aiStreamText.value = await getContractJobStream(jobId)
+        } catch {
+          /* 流尚未产生，忽略 */
+        }
+      }
       if (job.status === 'done') {
-        polling = false
-        scanVisible.value = false
-        await new Promise((r) => setTimeout(r, 300))
-        if (job.contract_id) {
-          await openDetail(job.contract_id)
+        try {
+          aiStreamText.value = await getContractJobStream(jobId)
+        } catch {
+          /* ignore */
         }
         ElMessage.success(`扫描完成，识别到 ${job.risk_count ?? 0} 项风险`)
         await loadList()
+        if (scanVisible.value && job.contract_id) {
+          const cid = job.contract_id
+          scanVisible.value = false
+          await new Promise((r) => setTimeout(r, 250))
+          openReport(cid)
+        }
+        currentJobId.value = ''
         return
       }
       if (job.status === 'failed') {
-        polling = false
         ElMessage.error(job.error || job.stage_message || '扫描失败')
+        await loadList()
+        currentJobId.value = ''
         return
       }
     } catch (e) {
-      polling = false
-      ElMessage.error((e as Error).message)
+      // 任务记录过期（10 分钟 TTL）：静默退出并刷新列表
+      currentJobId.value = ''
+      await loadList()
       return
     }
-    await new Promise((r) => setTimeout(r, 800))
+    await new Promise((r) => setTimeout(r, 600))
   }
 }
 
-function startPollingState() {
-  scanJob.value = { status: 'running', progress: 0, stage: 'created', stage_message: '任务已创建' }
-}
-
-function stopPolling() {
-  polling = false
-}
-
-async function openDetail(id: number) {
-  detailVisible.value = true
-  detailLoading.value = true
-  currentDetailId.value = id
+/** 从列表打开某合同的后台扫描进度 */
+async function openJobByContract(row: Contract) {
   try {
-    detail.value = await getContract(id)
-  } catch (e) {
-    ElMessage.error((e as Error).message)
-  } finally {
-    detailLoading.value = false
+    const job = await getContractJobByContract(row.id)
+    aiStreamText.value = ''
+    scanVisible.value = true
+    scanJob.value = job
+    if (job.status === 'running') {
+      const tracking = job.job_id ?? ''
+      currentJobId.value = tracking
+      while (currentJobId.value === tracking) {
+        await new Promise((r) => setTimeout(r, 600))
+        try {
+          const latest = await getContractJobByContract(row.id)
+          scanJob.value = latest
+          if (latest.ai?.status === 'running' && tracking) {
+            try {
+              aiStreamText.value = await getContractJobStream(tracking)
+            } catch {
+              /* ignore */
+            }
+          }
+          if (latest.status !== 'running') {
+            currentJobId.value = ''
+            await loadList()
+            if (latest.status === 'done') {
+              ElMessage.success(`扫描完成，识别到 ${latest.risk_count ?? 0} 项风险`)
+            }
+            return
+          }
+        } catch {
+          currentJobId.value = ''
+          await loadList()
+          return
+        }
+      }
+    } else {
+      // 已结束：仅展示最终状态
+      await loadList()
+    }
+  } catch {
+    ElMessage.info('该任务的进度记录已过期，请刷新列表查看结果')
+    await loadList()
   }
+}
+
+/** 关闭进度弹窗：扫描继续在后台执行，列表自动轮询状态 */
+function onScanDialogClosed() {
+  if (scanJob.value?.status === 'running') {
+    ElMessage.info('扫描已在后台继续，可随时在列表查看进度')
+  }
+  currentJobId.value = ''
+}
+
+/** 打开风险报告页 */
+function openReport(id: number) {
+  router.push({ name: 'contract-report', params: { id } })
 }
 
 async function onRescan(row: Contract) {
   rescanning.value = true
   try {
     const jobId = await startContractRescan(row.id)
-    await pollJob(jobId)
-  } catch (e) {
-    ElMessage.error((e as Error).message)
-  } finally {
-    rescanning.value = false
-  }
-}
-
-async function onRescanCurrent() {
-  if (!currentDetailId.value) return
-  rescanning.value = true
-  try {
-    const jobId = await startContractRescan(currentDetailId.value)
+    await loadList(true)
     await pollJob(jobId)
   } catch (e) {
     ElMessage.error((e as Error).message)
@@ -400,11 +424,92 @@ function formatTime(value: string | null): string {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 .upload-tip {
+  font-size: 12.5px;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+.row-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+.row-actions .el-button {
+  margin-left: 0;
+  padding: 4px 6px;
+}
+.upload-zone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 34px 20px;
+  border-radius: 16px;
+  border: 2px dashed rgba(37, 99, 235, 0.35);
+  background:
+    radial-gradient(420px 200px at 80% 0%, rgba(124, 58, 237, 0.06), transparent 60%),
+    radial-gradient(420px 200px at 20% 100%, rgba(6, 182, 212, 0.07), transparent 60%),
+    linear-gradient(160deg, #fbfdff, #f4f8ff);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  overflow: hidden;
+}
+.upload-zone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 30%, rgba(37, 99, 235, 0.06) 50%, transparent 70%);
+  transform: translateX(-100%);
+  animation: zone-shine 4.5s ease-in-out infinite;
+}
+@keyframes zone-shine {
+  0% { transform: translateX(-100%); }
+  55%, 100% { transform: translateX(100%); }
+}
+.upload-zone:hover,
+.upload-zone.dragging {
+  border-color: #2563eb;
+  background:
+    radial-gradient(420px 200px at 80% 0%, rgba(124, 58, 237, 0.10), transparent 60%),
+    radial-gradient(420px 200px at 20% 100%, rgba(6, 182, 212, 0.10), transparent 60%),
+    linear-gradient(160deg, #f6f9ff, #eef4ff);
+  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.12);
+}
+.upload-zone-icon {
+  display: block;
+}
+.upload-zone-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+}
+.upload-zone-title em {
+  font-style: normal;
+  color: #2563eb;
+}
+.upload-zone-tip {
   font-size: 12px;
   color: #94a3b8;
+  letter-spacing: 0.4px;
+}
+.upload-zone-formats {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.upload-zone-formats .fmt {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.16);
 }
 .list-toolbar {
   display: flex;
@@ -427,178 +532,62 @@ function formatTime(value: string | null): string {
   display: flex;
   justify-content: flex-end;
 }
-.detail-head {
-  margin-bottom: 12px;
-}
-.detail-file {
-  font-size: 16px;
-  font-weight: 600;
-  color: #111827;
-  word-break: break-all;
-}
-.detail-meta {
-  margin-top: 4px;
-  font-size: 12px;
-  color: #6b7280;
-}
-.empty-risk {
-  padding: 40px 0;
-  text-align: center;
-  color: #10b981;
-  font-size: 14px;
-}
-.risk-group {
-  margin-bottom: 18px;
-}
-.group-title {
-  margin-bottom: 10px;
-  font-size: 14px;
+.status-scanning {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
   font-weight: 600;
   color: #2563eb;
 }
-.risk-card {
-  padding: 14px 16px;
-  margin-bottom: 12px;
-  border-radius: 12px;
-  background: #f8fafc;
-  border: 1px solid #eef2f7;
+.scan-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2563eb;
+  animation: pulse-dot 1.2s ease-in-out infinite;
 }
-.risk-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.35); }
+  50% { box-shadow: 0 0 0 5px rgba(37, 99, 235, 0); }
 }
-.risk-name {
+.risk-analyzing {
+  font-size: 12.5px;
+  color: #7c3aed;
   font-weight: 600;
-  color: #111827;
 }
-.risk-code {
-  font-size: 12px;
+.risk-none {
   color: #94a3b8;
 }
-.risk-kws {
-  margin-top: 8px;
-  font-size: 12px;
-  color: #64748b;
+.scan-dialog-head {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 2px;
 }
-.risk-snippet {
-  margin: 8px 0 0;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  font-size: 12px;
+.preview-scroll {
+  height: calc(100vh - 120px);
+  overflow-y: auto;
+  border: 1px solid #eef1f6;
+  border-radius: 12px;
+  padding: 16px 18px;
+  background: #fbfcfe;
+}
+.preview-text {
+  margin: 0;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 13.5px;
+  line-height: 2;
   color: #334155;
   white-space: pre-wrap;
   word-break: break-all;
 }
-.risk-desc {
-  margin-top: 10px;
-  font-size: 13px;
-  color: #475569;
-}
-.risk-suggest {
-  margin-top: 6px;
-  font-size: 13px;
-  color: #b45309;
-}
-.scan-body {
-  padding: 4px 8px 8px;
-}
-.scan-stage {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #1e40af;
-}
-.scan-dots {
-  display: inline-flex;
-  gap: 4px;
-}
-.scan-dots i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #2563eb;
-  animation: blink 1s infinite;
-}
-.scan-dots i:nth-child(2) {
-  animation-delay: 0.2s;
-}
-.scan-dots i:nth-child(3) {
-  animation-delay: 0.4s;
-}
-@keyframes blink {
-  0%, 80%, 100% { opacity: 0.2; }
-  40% { opacity: 1; }
-}
-.scan-log {
-  margin-top: 12px;
-  padding: 10px 12px;
-  max-height: 180px;
-  overflow-y: auto;
-  border-radius: 10px;
-  background: #0f172a;
-  color: #cbd5e1;
-  font-family: Consolas, Menlo, monospace;
-  font-size: 12px;
-  line-height: 1.7;
-}
-.scan-log-line {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-}
-.scan-log-line.error {
-  color: #f87171;
-}
-.scan-log-line.current {
-  color: #93c5fd;
-  font-weight: 600;
-}
-.log-time {
-  flex-shrink: 0;
-  color: #64748b;
-}
-.current-text {
-  white-space: pre-wrap;
-}
-.scan-steps {
-  margin-top: 18px;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-.scan-step {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: #f8fafc;
-  color: #94a3b8;
-  font-size: 12px;
-}
-.scan-step.active {
-  background: rgba(37, 99, 235, 0.08);
-  color: #2563eb;
-  font-weight: 600;
-}
-.scan-step-icon {
+.scan-dialog-title {
+  font-size: 16px;
   font-weight: 700;
+  color: #0f172a;
 }
-.scan-error {
-  margin-top: 12px;
-  color: #dc2626;
-  font-size: 13px;
-  white-space: pre-wrap;
+.scan-dialog-sub {
+  font-size: 12px;
+  color: #94a3b8;
 }
 </style>

@@ -45,6 +45,6 @@ websockets==17.0.1
 
 # 合同风险识别（《11》）
 lxml==6.1.2
-pypdf==6.16.2
+pymupdf==1.28.2
 python-docx==1.2.0
 python-multipart==0.0.32
